@@ -13,18 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.model
 
-import android.graphics.Rect
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
+package com.android.wallpaper.picker.preview.ui.util
 
-/** Metadata for the static image wallpaper to be saved to the system preferences. */
-data class StaticWallpaperMetadata(
-    val attributions: List<String>?,
-    val actionUrl: String?,
-    val collectionId: String?,
-    val hashCode: Long?,
-    val managerId: Int,
-    val remoteId: String,
-    val cropHints: Map<ScreenOrientation, Rect>?,
-)
+import android.view.SurfaceControlViewHost
+import android.view.SurfaceView
+import android.view.View
+import android.view.ViewGroup
+
+object SurfaceViewUtil {
+
+    fun SurfaceView.attachView(view: View) {
+        // Detach view from its parent, if the view has one
+        (view.parent as ViewGroup?)?.removeView(view)
+        val host = SurfaceControlViewHost(context, display, hostToken)
+        host.setView(view, width, height)
+        setChildSurfacePackage(checkNotNull(host.surfacePackage))
+    }
+}

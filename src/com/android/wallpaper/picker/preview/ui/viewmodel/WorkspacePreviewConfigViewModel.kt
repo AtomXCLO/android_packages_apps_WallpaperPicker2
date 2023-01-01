@@ -13,18 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.model
+package com.android.wallpaper.picker.preview.ui.viewmodel
 
-import android.graphics.Rect
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
+import com.android.wallpaper.util.PreviewUtils
 
-/** Metadata for the static image wallpaper to be saved to the system preferences. */
-data class StaticWallpaperMetadata(
-    val attributions: List<String>?,
-    val actionUrl: String?,
-    val collectionId: String?,
-    val hashCode: Long?,
-    val managerId: Int,
-    val remoteId: String,
-    val cropHints: Map<ScreenOrientation, Rect>?,
+/** Defines configuration associated with a single workspace preview. */
+data class WorkspacePreviewConfigViewModel(
+
+    /** The preview utils for rendering the workspace preview, different for Home & Lock screens. */
+    val previewUtils: PreviewUtils,
+
+    /** The ID of the display to be rendered. */
+    val displayId: Int,
 )
