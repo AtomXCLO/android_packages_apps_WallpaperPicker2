@@ -72,6 +72,7 @@ import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker;
 import com.android.wallpaper.module.WallpaperPersister.Destination;
 import com.android.wallpaper.module.WallpaperPreferences;
+import com.android.wallpaper.util.DisplayUtils;
 import com.android.wallpaper.util.FullScreenAnimation;
 import com.android.wallpaper.util.ResourceUtils;
 import com.android.wallpaper.util.ScreenSizeCalculator;
@@ -136,6 +137,7 @@ public class ImagePreviewFragment extends PreviewFragment {
     protected SubsamplingScaleImageView mFullResImageView;
     protected Asset mWallpaperAsset;
     private Future<ColorInfo> mColorFuture;
+    private DisplayUtils mDisplayUtils;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -156,12 +158,13 @@ public class ImagePreviewFragment extends PreviewFragment {
         View view = super.onCreateView(inflater, container, savedInstanceState);
 
         Activity activity = requireActivity();
+        mDisplayUtils = mInjector.getDisplayUtils(activity);
         ScreenSizeCalculator screenSizeCalculator = ScreenSizeCalculator.getInstance();
         mScreenSize = screenSizeCalculator.getScreenSize(
                 activity.getWindowManager().getDefaultDisplay());
         // "Wallpaper screen" size will be the size of the largest screen available
         mWallpaperScreenSize = screenSizeCalculator.getScreenSize(
-                mInjector.getDisplayUtils(activity).getWallpaperDisplay());
+                mDisplayUtils.getWallpaperDisplay());
 
         mContainer = view.findViewById(R.id.container);
         mTouchForwardingLayout = mContainer.findViewById(R.id.touch_forwarding_layout);
@@ -421,7 +424,7 @@ public class ImagePreviewFragment extends PreviewFragment {
 
         BitmapCropper bitmapCropper = mInjector.getBitmapCropper();
         bitmapCropper.cropAndScaleBitmap(mWallpaperAsset, mFullResImageView.getScale(),
-                calculateCropRect(context), /* adjustForRtl= */ false,
+                calculateCropRect(context, /* cropExtraWidth= */ true), /* adjustForRtl= */ false,
                 new BitmapCropper.Callback() {
                     @Override
                     public void onBitmapCropped(Bitmap croppedBitmap) {
@@ -515,7 +518,7 @@ public class ImagePreviewFragment extends PreviewFragment {
         Point crop = new Point(cropWidth, cropHeight);
         Rect visibleRawWallpaperRect =
                 WallpaperCropUtils.calculateVisibleRect(mRawWallpaperSize, crop);
-        if (offsetToStart && mScreenSize.equals(mWallpaperScreenSize)) {
+        if (offsetToStart && mDisplayUtils.isOnWallpaperDisplay(requireActivity())) {
             if (WallpaperCropUtils.isRtl(requireContext())) {
                 visibleRawWallpaperRect.offsetTo(mRawWallpaperSize.x
                                 - visibleRawWallpaperRect.width(), visibleRawWallpaperRect.top);
@@ -543,7 +546,7 @@ public class ImagePreviewFragment extends PreviewFragment {
         mFullResImageView.setScaleAndCenter(minWallpaperZoom, centerPosition);
     }
 
-    private Rect calculateCropRect(Context context) {
+    private Rect calculateCropRect(Context context, boolean cropExtraWidth) {
         float wallpaperZoom = mFullResImageView.getScale();
         Context appContext = context.getApplicationContext();
 
@@ -560,12 +563,13 @@ public class ImagePreviewFragment extends PreviewFragment {
         Point cropSurfaceSize = WallpaperCropUtils.calculateCropSurfaceSize(res, maxCrop, minCrop,
                 cropWidth, cropHeight);
         return WallpaperCropUtils.calculateCropRect(appContext, hostViewSize,
-                cropSurfaceSize, mRawWallpaperSize, visibleFileRect, wallpaperZoom);
+                cropSurfaceSize, mRawWallpaperSize, visibleFileRect, wallpaperZoom, cropExtraWidth);
     }
 
     @Override
     protected void setCurrentWallpaper(@Destination int destination) {
-        Rect cropRect = calculateCropRect(getContext());
+        // Only crop extra wallpaper width for single display devices.
+        Rect cropRect = calculateCropRect(getContext(), !mDisplayUtils.hasMultiInternalDisplays());
         float screenScale = WallpaperCropUtils.getScaleOfScreenResolution(
                 mFullResImageView.getScale(), cropRect, mWallpaperScreenSize.x,
                 mWallpaperScreenSize.y);
@@ -640,7 +644,7 @@ public class ImagePreviewFragment extends PreviewFragment {
                 int origHeight = mWallpaperSurface.getHeight();
 
                 int scaledOrigWidth = origWidth;
-                if (!mScreenSize.equals(mWallpaperScreenSize)) {
+                if (!mDisplayUtils.isOnWallpaperDisplay(requireActivity())) {
                     // Scale the width of the mWallpaperSurface if the current screen is not the
                     // largest screen (wallpaper screen).
                     float previewToScreenScale = (float) origWidth / mScreenSize.x;

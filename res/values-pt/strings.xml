@@ -84,7 +84,7 @@
     <string name="my_photos" msgid="8613021349284084982">"Minhas fotos"</string>
     <string name="configure_wallpaper" msgid="849882179182976621">"Configurações…"</string>
     <string name="delete_live_wallpaper" msgid="589212696102662329">"Excluir"</string>
-    <string name="delete_wallpaper_confirmation" msgid="33790318361863778">"Excluir esse plano de fundo do seu smartphone?"</string>
+    <string name="delete_wallpaper_confirmation" msgid="1905114562243802354">"Excluir esse plano de fundo do dispositivo?"</string>
     <string name="bottom_action_bar_back" msgid="8237013112999946725">"Voltar"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Editar"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"Fazer o download"</string>
@@ -111,4 +111,10 @@
     <string name="settings_snackbar_description" msgid="890168814524778486">"Ative a permissão de acesso a arquivos e mídia nas configurações."</string>
     <string name="settings_snackbar_enable" msgid="5992112808061426068">"Ativar"</string>
     <string name="open_my_photos" msgid="4107196465713868381">"Abrir minhas fotos"</string>
+    <string name="lock_screen_tab" msgid="6672930765010407652">"Tela de bloqueio"</string>
+    <string name="home_screen_tab" msgid="1080445697837877526">"Tela inicial"</string>
+    <string name="reset" msgid="4945445169532850631">"Redefinir"</string>
+    <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Redefinir mudanças?"</string>
+    <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"As mudanças não vão ser salvas"</string>
+    <string name="more_wallpapers" msgid="7585665124282737376">"Mais planos de fundo"</string>
 </resources>

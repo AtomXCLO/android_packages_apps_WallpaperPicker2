@@ -46,11 +46,13 @@ import androidx.core.widget.ContentLoadingProgressBar;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.OnLifecycleEvent;
 
 import com.android.wallpaper.R;
 import com.android.wallpaper.asset.Asset;
 import com.android.wallpaper.asset.BitmapCachingAsset;
+import com.android.wallpaper.asset.CurrentWallpaperAssetVN;
 import com.android.wallpaper.model.WallpaperInfo.ColorInfo;
 import com.android.wallpaper.module.CurrentWallpaperInfoFactory;
 import com.android.wallpaper.module.InjectorProvider;
@@ -59,6 +61,7 @@ import com.android.wallpaper.picker.CategorySelectorFragment;
 import com.android.wallpaper.picker.MyPhotosStarter;
 import com.android.wallpaper.picker.WallpaperSectionView;
 import com.android.wallpaper.picker.WorkspaceSurfaceHolderCallback;
+import com.android.wallpaper.util.DisplayUtils;
 import com.android.wallpaper.util.PreviewUtils;
 import com.android.wallpaper.util.ResourceUtils;
 import com.android.wallpaper.util.WallpaperConnection;
@@ -102,26 +105,29 @@ public class WallpaperSectionController implements
     private final LifecycleOwner mLifecycleOwner;
     private final PermissionRequester mPermissionRequester;
     private final WallpaperColorsViewModel mWallpaperColorsViewModel;
-    private final WorkspaceViewModel mWorkspaceViewModel;
+    @Nullable private final LiveData<Boolean> mOnThemingChanged;
     private final CustomizationSectionNavigationController mSectionNavigationController;
     private final WallpaperPreviewNavigator mWallpaperPreviewNavigator;
     private final Bundle mSavedInstanceState;
+    private final DisplayUtils mDisplayUtils;
 
     public WallpaperSectionController(Activity activity, LifecycleOwner lifecycleOwner,
             PermissionRequester permissionRequester, WallpaperColorsViewModel colorsViewModel,
-            WorkspaceViewModel workspaceViewModel,
+            @Nullable LiveData<Boolean> onThemingChanged,
             CustomizationSectionNavigationController sectionNavigationController,
             WallpaperPreviewNavigator wallpaperPreviewNavigator,
-            Bundle savedInstanceState) {
+            Bundle savedInstanceState,
+            DisplayUtils displayUtils) {
         mActivity = activity;
         mLifecycleOwner = lifecycleOwner;
         mPermissionRequester = permissionRequester;
         mAppContext = mActivity.getApplicationContext();
         mWallpaperColorsViewModel = colorsViewModel;
-        mWorkspaceViewModel = workspaceViewModel;
+        mOnThemingChanged = onThemingChanged;
         mSectionNavigationController = sectionNavigationController;
         mWallpaperPreviewNavigator = wallpaperPreviewNavigator;
         mSavedInstanceState = savedInstanceState;
+        mDisplayUtils = displayUtils;
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
@@ -151,6 +157,11 @@ public class WallpaperSectionController implements
     }
 
     @Override
+    public boolean shouldRetainInstanceWhenSwitchingTabs() {
+        return true;
+    }
+
+    @Override
     public boolean isAvailable(Context context) {
         return true;
     }
@@ -177,7 +188,8 @@ public class WallpaperSectionController implements
         mHomeWallpaperSurfaceCallback = new WallpaperSurfaceCallback(mActivity, mHomePreviewCard,
                 mHomeWallpaperSurface, colorFuture, () -> {
             if (mHomePreviewWallpaperInfo != null) {
-                maybeLoadThumbnail(mHomePreviewWallpaperInfo, mHomeWallpaperSurfaceCallback);
+                maybeLoadThumbnail(mHomePreviewWallpaperInfo, mHomeWallpaperSurfaceCallback,
+                        mDisplayUtils.isOnWallpaperDisplay(mActivity));
             }
         });
 
@@ -191,7 +203,8 @@ public class WallpaperSectionController implements
         mLockWallpaperSurfaceCallback = new WallpaperSurfaceCallback(mActivity,
                 mLockscreenPreviewCard, mLockWallpaperSurface, colorFuture, () -> {
             if (mLockPreviewWallpaperInfo != null) {
-                maybeLoadThumbnail(mLockPreviewWallpaperInfo, mLockWallpaperSurfaceCallback);
+                maybeLoadThumbnail(mLockPreviewWallpaperInfo, mLockWallpaperSurfaceCallback,
+                        mDisplayUtils.isOnWallpaperDisplay(mActivity));
             }
         });
         mLockPreviewContainer = mLockscreenPreviewCard.findViewById(
@@ -211,10 +224,12 @@ public class WallpaperSectionController implements
         wallpaperSectionView.findViewById(R.id.wallpaper_picker_entry).setOnClickListener(
                 v -> mSectionNavigationController.navigateTo(new CategorySelectorFragment()));
 
-        mWorkspaceViewModel.getUpdateWorkspace().observe(mLifecycleOwner, update ->
-                updateWorkspacePreview(mWorkspaceSurface, mWorkspaceSurfaceCallback,
-                        mWallpaperColorsViewModel.getHomeWallpaperColors().getValue())
-        );
+        if (mOnThemingChanged != null) {
+            mOnThemingChanged.observe(mLifecycleOwner, update ->
+                    updateWorkspacePreview(mWorkspaceSurface, mWorkspaceSurfaceCallback,
+                            mWallpaperColorsViewModel.getHomeWallpaperColors().getValue())
+            );
+        }
 
         return wallpaperSectionView;
     }
@@ -389,7 +404,8 @@ public class WallpaperSectionController implements
                 ? mHomeWallpaperSurfaceCallback : mLockWallpaperSurfaceCallback;
         // Load thumb regardless of live wallpaper to make sure we have a placeholder while
         // the live wallpaper initializes in that case.
-        maybeLoadThumbnail(wallpaperInfo, surfaceCallback);
+        maybeLoadThumbnail(wallpaperInfo, surfaceCallback,
+                mDisplayUtils.isOnWallpaperDisplay(mActivity));
 
         if (isHomeWallpaper) {
             if (mWallpaperConnection != null) {
@@ -410,13 +426,16 @@ public class WallpaperSectionController implements
 
     @NonNull
     private Asset maybeLoadThumbnail(WallpaperInfo wallpaperInfo,
-            WallpaperSurfaceCallback surfaceCallback) {
+            WallpaperSurfaceCallback surfaceCallback, boolean offsetToStart) {
         ImageView imageView = surfaceCallback.getHomeImageWallpaper();
-        Asset thumbAsset = new BitmapCachingAsset(mAppContext,
-                wallpaperInfo.getThumbAsset(mAppContext));
+        Asset thumbAsset = wallpaperInfo.getThumbAsset(mAppContext);
+        // Respect offsetToStart only for CurrentWallpaperAssetVN otherwise true.
+        offsetToStart = !(thumbAsset instanceof CurrentWallpaperAssetVN) || offsetToStart;
+        thumbAsset = new BitmapCachingAsset(mAppContext, thumbAsset);
         if (imageView != null && imageView.getDrawable() == null) {
             thumbAsset.loadPreviewImage(mActivity, imageView,
-                    ResourceUtils.getColorAttr(mActivity, android.R.attr.colorSecondary));
+                    ResourceUtils.getColorAttr(mActivity, android.R.attr.colorSecondary),
+                    offsetToStart);
         }
         return thumbAsset;
     }
@@ -426,7 +445,7 @@ public class WallpaperSectionController implements
                 mWallpaperColorsViewModel.getHomeWallpaperColors().getValue())) {
             return;
         }
-        mWallpaperColorsViewModel.getHomeWallpaperColors().setValue(wallpaperColors);
+        mWallpaperColorsViewModel.setHomeWallpaperColors(wallpaperColors);
     }
 
     private void onLockWallpaperColorsChanged(WallpaperColors wallpaperColors) {
@@ -434,7 +453,7 @@ public class WallpaperSectionController implements
                 mWallpaperColorsViewModel.getLockWallpaperColors().getValue())) {
             return;
         }
-        mWallpaperColorsViewModel.getLockWallpaperColors().setValue(wallpaperColors);
+        mWallpaperColorsViewModel.setLockWallpaperColors(wallpaperColors);
         if (mLockScreenPreviewer != null) {
             mLockScreenPreviewer.setColor(wallpaperColors);
         }

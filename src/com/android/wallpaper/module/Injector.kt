@@ -15,10 +15,10 @@
  */
 package com.android.wallpaper.module
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import com.android.wallpaper.compat.WallpaperManagerCompat
 import com.android.wallpaper.config.BaseFlags
@@ -29,6 +29,8 @@ import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.monitor.PerformanceMonitor
 import com.android.wallpaper.network.Requester
 import com.android.wallpaper.picker.PreviewFragment
+import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
+import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
 import com.android.wallpaper.picker.undo.domain.interactor.SnapshotRestorer
 import com.android.wallpaper.picker.undo.domain.interactor.UndoInteractor
 import com.android.wallpaper.util.DisplayUtils
@@ -46,7 +48,7 @@ interface Injector {
 
     fun getCurrentWallpaperInfoFactory(context: Context): CurrentWallpaperInfoFactory
 
-    fun getCustomizationSections(activity: Activity): CustomizationSections
+    fun getCustomizationSections(activity: ComponentActivity): CustomizationSections
 
     fun getDeepLinkRedirectIntent(context: Context, uri: Uri): Intent
 
@@ -60,7 +62,7 @@ interface Injector {
 
     fun getExploreIntentChecker(context: Context): ExploreIntentChecker
 
-    fun getIndividualPickerFragment(collectionId: String): Fragment
+    fun getIndividualPickerFragment(context: Context, collectionId: String): Fragment
 
     fun getLiveWallpaperInfoFactory(context: Context): LiveWallpaperInfoFactory
 
@@ -114,4 +116,8 @@ interface Injector {
         // Empty because we don't support undoing in WallpaperPicker2.
         return HashMap()
     }
+
+    fun getWallpaperInteractor(context: Context): WallpaperInteractor
+
+    fun getWallpaperSnapshotRestorer(context: Context): WallpaperSnapshotRestorer
 }
