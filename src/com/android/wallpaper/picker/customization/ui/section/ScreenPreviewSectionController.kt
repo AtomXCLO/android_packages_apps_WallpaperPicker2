@@ -89,11 +89,16 @@ open class ScreenPreviewSectionController(
             View.OnClickListener {
                 lifecycleOwner.lifecycleScope.launch {
                     getWallpaperInfo()?.let { wallpaperInfo ->
-                        wallpaperPreviewNavigator.showViewOnlyPreview(wallpaperInfo, false)
+                        wallpaperPreviewNavigator.showViewOnlyPreview(
+                            wallpaperInfo,
+                            !isOnLockScreen
+                        )
                     }
                 }
             }
-        view.setOnClickListener(onClickListener)
+        view
+            .requireViewById<ScreenPreviewClickView>(R.id.screen_preview_click_view)
+            .setOnClickListener(onClickListener)
         val lockScreenView: CardView = view.requireViewById(R.id.lock_preview)
         val homeScreenView: CardView = view.requireViewById(R.id.home_preview)
 
@@ -239,7 +244,7 @@ open class ScreenPreviewSectionController(
                 { homeWallpaper, lockWallpaper, _ ->
                     continuation.resume(
                         if (isOnLockScreen) {
-                            lockWallpaper
+                            lockWallpaper ?: homeWallpaper
                         } else {
                             homeWallpaper
                         },
