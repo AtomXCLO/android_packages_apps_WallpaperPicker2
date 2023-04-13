@@ -99,11 +99,6 @@ public class TestCategoryProvider implements CategoryProvider {
     }
 
     @Override
-    public boolean isCreativeCategoryAvailable() {
-        return false;
-    }
-
-    @Override
     public boolean isFeaturedCollectionAvailable() {
         return false;
     }

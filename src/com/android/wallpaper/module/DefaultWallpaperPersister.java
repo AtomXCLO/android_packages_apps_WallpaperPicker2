@@ -555,10 +555,25 @@ public class DefaultWallpaperPersister implements WallpaperPersister {
     }
 
     /**
-     * Returns whether a separate lock-screen wallpaper is set to the WallpaperManager.
+     * Returns whether a separate lock-screen (static) wallpaper is set to the WallpaperManager.
      */
     private boolean isSeparateLockScreenWallpaperSet() {
-        return mWallpaperManager.getWallpaperId(WallpaperManager.FLAG_LOCK) < 0;
+        ParcelFileDescriptor lockWallpaperFile =
+                mWallpaperManagerCompat.getWallpaperFile(WallpaperManagerCompat.FLAG_LOCK);
+
+        boolean isLockWallpaperSet = false;
+
+        if (lockWallpaperFile != null) {
+            isLockWallpaperSet = true;
+
+            try {
+                lockWallpaperFile.close();
+            } catch (IOException e) {
+                Log.e(TAG, "Unable to close PFD for lock wallpaper", e);
+            }
+        }
+
+        return isLockWallpaperSet;
     }
 
     @Override

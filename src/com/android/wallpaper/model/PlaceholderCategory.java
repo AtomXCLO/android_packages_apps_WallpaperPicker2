@@ -44,5 +44,4 @@ public class PlaceholderCategory extends Category {
     public Asset getThumbnail(Context context) {
         return null;
     }
-
 }
