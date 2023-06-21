@@ -36,6 +36,7 @@ import com.android.wallpaper.network.WallpaperRequester
 import com.android.wallpaper.picker.CustomizationPickerActivity
 import com.android.wallpaper.picker.ImagePreviewFragment
 import com.android.wallpaper.picker.LivePreviewFragment
+import com.android.wallpaper.picker.MyPhotosStarter
 import com.android.wallpaper.picker.PreviewFragment
 import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
@@ -297,6 +298,7 @@ open class WallpaperPicker2Injector : Injector {
     }
 
     override fun getWallpaperInteractor(context: Context): WallpaperInteractor {
+        val appContext = context.applicationContext
         return wallpaperInteractor
             ?: WallpaperInteractor(
                     repository =
@@ -304,11 +306,11 @@ open class WallpaperPicker2Injector : Injector {
                             scope = getApplicationCoroutineScope(),
                             client =
                                 WallpaperClientImpl(
-                                    context = context.applicationContext,
-                                    infoFactory = getCurrentWallpaperInfoFactory(context),
-                                    wallpaperManager = WallpaperManager.getInstance(context)
+                                    context = appContext,
+                                    infoFactory = getCurrentWallpaperInfoFactory(appContext),
+                                    wallpaperManager = WallpaperManager.getInstance(appContext)
                                 ),
-                            wallpaperPreferences = getPreferences(context = context),
+                            wallpaperPreferences = getPreferences(context = appContext),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
                 )
@@ -336,6 +338,10 @@ open class WallpaperPicker2Injector : Injector {
     override fun getWallpaperColorsViewModel(): WallpaperColorsViewModel {
         return wallpaperColorsViewModel
             ?: WallpaperColorsViewModel().also { wallpaperColorsViewModel = it }
+    }
+
+    override fun getMyPhotosIntentProvider(): MyPhotosStarter.MyPhotosIntentProvider {
+        return object : MyPhotosStarter.MyPhotosIntentProvider {}
     }
 
     companion object {
