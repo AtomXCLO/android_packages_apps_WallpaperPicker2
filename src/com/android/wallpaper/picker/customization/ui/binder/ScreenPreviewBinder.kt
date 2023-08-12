@@ -21,7 +21,10 @@ import android.app.Activity
 import android.app.WallpaperColors
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.service.wallpaper.WallpaperService
@@ -145,6 +148,7 @@ object ScreenPreviewBinder {
         var loadingImageDrawable: Drawable? = null
         var animationTimeToRestore: Long? = null
         var animationColorToRestore: Int? = null
+        var currentWallpaperThumbnail: Bitmap? = null
 
         val job =
             lifecycleOwner.lifecycleScope.launch {
@@ -172,7 +176,13 @@ object ScreenPreviewBinder {
                                         // a null drawable means the loading animation should not
                                         // be played
                                         loadingImageDrawable?.let {
-                                            loadingAnimation = LoadingAnimation(it, loadingView)
+                                            loadingView.setImageDrawable(it)
+                                            loadingAnimation =
+                                                LoadingAnimation(
+                                                    loadingView,
+                                                    LoadingAnimation.RevealType.CIRCULAR,
+                                                    LoadingAnimation.TIME_OUT_DURATION_MS
+                                                )
                                         }
                                     }
                                 }
@@ -322,6 +332,14 @@ object ScreenPreviewBinder {
 
                 launch {
                     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        viewModel.wallpaperThumbnail().collect { thumbnail ->
+                            currentWallpaperThumbnail = thumbnail
+                        }
+                    }
+                }
+
+                launch {
+                    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                         var initialWorkspaceUpdate = true
                         viewModel.workspaceUpdateEvents()?.collect {
                             if (initialWorkspaceUpdate) {
@@ -340,15 +358,33 @@ object ScreenPreviewBinder {
                                 if (isLoading) {
                                     loadingAnimation?.cancel()
 
-                                    // When loading is started, create a new loading animation
+                                    // Loading is started, create a new loading animation
                                     // with the current wallpaper as background.
-                                    // Current solution to get wallpaper for animation background
-                                    // works for static & live wallpapers, not for emoji
-                                    wallpaperSurfaceCallback?.homeImageWallpaper?.let {
+                                    // First, try to get the wallpaper image from
+                                    // wallpaperSurfaceCallback, this is the best solution for
+                                    // static and live wallpapers but not for creative wallpapers
+                                    val wallpaperPreviewImage =
+                                        wallpaperSurfaceCallback?.homeImageWallpaper
+                                    // If wallpaper drawable was not loaded, and the preview
+                                    // drawable is the placeholder color drawable, use the wallpaper
+                                    // thumbnail instead: the best solution for creative wallpapers
+                                    val animationBackground: Drawable? =
+                                        if (wallpaperPreviewImage?.drawable is ColorDrawable) {
+                                            currentWallpaperThumbnail?.let { thumbnail ->
+                                                BitmapDrawable(activity.resources, thumbnail)
+                                            }
+                                                ?: wallpaperPreviewImage.drawable
+                                        } else wallpaperPreviewImage?.drawable
+                                    animationBackground?.let {
+                                        loadingView.setImageDrawable(animationBackground)
                                         loadingAnimation =
-                                            LoadingAnimation(it.drawable, loadingView)
-                                        loadingImageDrawable = it.drawable
+                                            LoadingAnimation(
+                                                loadingView,
+                                                LoadingAnimation.RevealType.CIRCULAR,
+                                                LoadingAnimation.TIME_OUT_DURATION_MS
+                                            )
                                     }
+                                    loadingImageDrawable = animationBackground
                                     val colorAccent =
                                         ResourceUtils.getColorAttr(
                                             activity,
@@ -418,13 +454,13 @@ object ScreenPreviewBinder {
                                     // TODO(b/284233455): investigate why and remove this workaround
                                     previewView.addOnAttachStateChangeListener(
                                         object : OnAttachStateChangeListener {
-                                            override fun onViewAttachedToWindow(v: View?) {
+                                            override fun onViewAttachedToWindow(v: View) {
                                                 connection.connect()
                                                 connection.setVisibility(showLivePreview.get())
                                                 previewView.removeOnAttachStateChangeListener(this)
                                             }
 
-                                            override fun onViewDetachedFromWindow(v: View?) {
+                                            override fun onViewDetachedFromWindow(v: View) {
                                                 // Do nothing
                                             }
                                         }
