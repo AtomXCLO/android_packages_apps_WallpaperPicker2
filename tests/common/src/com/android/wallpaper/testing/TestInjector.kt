@@ -23,6 +23,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
+import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.model.CategoryProvider
@@ -253,6 +254,12 @@ open class TestInjector : Injector {
                     override fun isPageTransitionsFeatureEnabled(context: Context): Boolean {
                         return true
                     }
+
+                    override fun getCachedFlags(
+                        context: Context
+                    ): List<CustomizationProviderClient.Flag> {
+                        return listOf()
+                    }
                 }
                 .also { flags = it }
     }
@@ -304,5 +311,9 @@ open class TestInjector : Injector {
 
     override fun getMyPhotosIntentProvider(): MyPhotosStarter.MyPhotosIntentProvider {
         return object : MyPhotosStarter.MyPhotosIntentProvider {}
+    }
+
+    override fun isCurrentSelectedColorPreset(context: Context): Boolean {
+        return false
     }
 }
