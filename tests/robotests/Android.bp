@@ -9,9 +9,14 @@ android_robolectric_test {
 
     srcs: [
         "src/**/*.java",
+        "src/**/*.kt",
     ],
 
     java_resource_dirs: ["config"],
+
+    static_libs: [
+        "WallpaperPicker2TestLib",
+    ],
 
     libs: [
         "androidx.test.core",

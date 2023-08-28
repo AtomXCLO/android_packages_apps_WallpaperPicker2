@@ -21,7 +21,6 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
-import com.android.wallpaper.compat.WallpaperManagerCompat
 import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.model.CategoryProvider
@@ -100,8 +99,6 @@ interface Injector {
 
     fun getUserEventLogger(context: Context): UserEventLogger
 
-    fun getWallpaperManagerCompat(context: Context): WallpaperManagerCompat
-
     fun getWallpaperPersister(context: Context): WallpaperPersister
 
     fun getPreferences(context: Context): WallpaperPreferences
@@ -112,7 +109,7 @@ interface Injector {
 
     fun getWallpaperRotationRefresher(): WallpaperRotationRefresher
 
-    fun getWallpaperStatusChecker(): WallpaperStatusChecker
+    fun getWallpaperStatusChecker(context: Context): WallpaperStatusChecker
 
     fun getFragmentFactory(): FragmentFactory? {
         return null
@@ -136,4 +133,8 @@ interface Injector {
     fun getWallpaperColorsViewModel(): WallpaperColorsViewModel
 
     fun getMyPhotosIntentProvider(): MyPhotosIntentProvider
+
+    fun isInstrumentationTest(): Boolean {
+        return false
+    }
 }

@@ -15,10 +15,12 @@
  */
 package com.android.wallpaper.config
 
+import android.app.WallpaperManager
 import android.content.Context
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClient
 import com.android.systemui.shared.customization.data.content.CustomizationProviderClientImpl
 import com.android.systemui.shared.customization.data.content.CustomizationProviderContract as Contract
+import com.android.wallpaper.module.InjectorProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
@@ -26,9 +28,20 @@ abstract class BaseFlags {
     var customizationProviderClient: CustomizationProviderClient? = null
     open fun isStagingBackdropContentEnabled() = false
     open fun isWallpaperEffectEnabled() = false
+    open fun isWallpaperEffectModelDownloadEnabled() = true
 
     // TODO(b/285047815): Remove flag after adding wallpaper id for default static wallpaper
     open fun isWallpaperRestorerEnabled() = false
+
+    /**
+     * Enables new preview UI if both [isMultiCropEnabled] and this flag are true.
+     *
+     * TODO(b/291761856): Create SysUI flag for new preview UI
+     */
+    open fun isMultiCropPreviewUiEnabled() = false
+
+    open fun isMultiCropEnabled() = WallpaperManager.isMultiCropEnabled()
+
     open fun isFullscreenWallpaperPreviewEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag ->
@@ -36,27 +49,27 @@ abstract class BaseFlags {
             }
             ?.value == true
     }
-    fun isUseRevampedUiEnabled(context: Context): Boolean {
+    open fun isUseRevampedUiEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag ->
                 flag.name == Contract.FlagsTable.FLAG_NAME_REVAMPED_WALLPAPER_UI
             }
             ?.value == true
     }
-    fun isCustomClocksEnabled(context: Context): Boolean {
+    open fun isCustomClocksEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag ->
                 flag.name == Contract.FlagsTable.FLAG_NAME_CUSTOM_CLOCKS_ENABLED
             }
             ?.value == true
     }
-    fun isMonochromaticThemeEnabled(context: Context): Boolean {
+    open fun isMonochromaticThemeEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_MONOCHROMATIC_THEME }
             ?.value == true
     }
 
-    fun isAIWallpaperEnabled(context: Context): Boolean {
+    open fun isAIWallpaperEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag ->
                 flag.name == Contract.FlagsTable.FLAG_NAME_WALLPAPER_PICKER_UI_FOR_AIWP
@@ -64,9 +77,23 @@ abstract class BaseFlags {
             ?.value == true
     }
 
-    fun isTransitClockEnabled(context: Context): Boolean {
+    open fun isTransitClockEnabled(context: Context): Boolean {
         return runBlocking { getCustomizationProviderClient(context).queryFlags() }
             .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_TRANSIT_CLOCK }
+            ?.value == true
+    }
+
+    open fun isPageTransitionsFeatureEnabled(context: Context): Boolean {
+        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+            .firstOrNull { flag -> flag.name == Contract.FlagsTable.FLAG_NAME_PAGE_TRANSITIONS }
+            ?.value == true
+    }
+
+    open fun isPreviewLoadingAnimationEnabled(context: Context): Boolean {
+        return runBlocking { getCustomizationProviderClient(context).queryFlags() }
+            .firstOrNull { flag ->
+                flag.name == Contract.FlagsTable.FLAG_NAME_WALLPAPER_PICKER_PREVIEW_ANIMATION
+            }
             ?.value == true
     }
 
@@ -75,5 +102,11 @@ abstract class BaseFlags {
             ?: CustomizationProviderClientImpl(context.applicationContext, Dispatchers.IO).also {
                 customizationProviderClient = it
             }
+    }
+    companion object {
+        @JvmStatic
+        fun get(): BaseFlags {
+            return InjectorProvider.getInjector().getFlags()
+        }
     }
 }

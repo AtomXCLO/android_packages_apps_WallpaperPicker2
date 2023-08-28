@@ -25,14 +25,18 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.activity.ComponentActivity;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.transition.Transition;
 
 import com.android.settingslib.activityembedding.ActivityEmbeddingUtils;
 import com.android.wallpaper.R;
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.CustomizationSectionController;
 import com.android.wallpaper.model.CustomizationSectionController.CustomizationSectionNavigationController;
 import com.android.wallpaper.model.PermissionRequester;
@@ -124,17 +128,22 @@ public class CustomizationPickerFragment extends AppbarFragment implements
             if (mBinding != null) {
                 mBinding.dispose();
             }
+            final List<CustomizationSectionController<?>> lockSectionControllers =
+                    getSectionControllers(CustomizationSections.Screen.LOCK_SCREEN,
+                            finalSavedInstanceState);
+            final List<CustomizationSectionController<?>> homeSectionControllers =
+                    getSectionControllers(CustomizationSections.Screen.HOME_SCREEN,
+                            finalSavedInstanceState);
+            mSectionControllers.addAll(lockSectionControllers);
+            mSectionControllers.addAll(homeSectionControllers);
             mBinding = CustomizationPickerBinder.bind(
                     view,
                     getToolbarId(),
                     mViewModel,
                     this,
                     isOnLockScreen -> filterAvailableSections(
-                            getSectionControllers(
-                                    isOnLockScreen
-                                            ? CustomizationSections.Screen.LOCK_SCREEN
-                                            : CustomizationSections.Screen.HOME_SCREEN,
-                                    finalSavedInstanceState)));
+                            isOnLockScreen ? lockSectionControllers : homeSectionControllers
+                    ));
         } else {
             setContentView(view, R.layout.fragment_customization_picker);
         }
@@ -154,7 +163,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                         if (scrollY == 0) {
                             setToolbarColor(android.R.color.transparent);
                         } else {
-                            setToolbarColor(R.color.toolbar_color);
+                            setToolbarColor(R.color.system_surface_container_highest);
                         }
                     }
             );
@@ -164,7 +173,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
                         if (scrollY == 0) {
                             setToolbarColor(android.R.color.transparent);
                         } else {
-                            setToolbarColor(R.color.toolbar_color);
+                            setToolbarColor(R.color.system_surface_container_highest);
                         }
                     }
             );
@@ -197,7 +206,7 @@ public class CustomizationPickerFragment extends AppbarFragment implements
             // Post it to the end of adding views to ensure restoring view state the last task.
             view.post(() -> restoreViewState(savedInstanceStateRef));
         }
-
+        ((ViewGroup) view).setTransitionGroup(true);
         return view;
     }
 
@@ -233,6 +242,11 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     }
 
     @Override
+    protected int getToolbarTextColor() {
+        return ContextCompat.getColor(requireContext(), R.color.system_on_surface);
+    }
+
+    @Override
     public CharSequence getDefaultTitle() {
         return getString(R.string.app_name);
     }
@@ -262,13 +276,21 @@ public class CustomizationPickerFragment extends AppbarFragment implements
 
     @Override
     public void navigateTo(Fragment fragment) {
+        prepareFragmentTransitionAnimation();
         FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+
+        boolean isPageTransitionsFeatureEnabled =
+                BaseFlags.get().isPageTransitionsFeatureEnabled(requireContext());
+
         fragmentManager
                 .beginTransaction()
+                .setReorderingAllowed(isPageTransitionsFeatureEnabled)
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(null)
                 .commit();
-        fragmentManager.executePendingTransactions();
+        if (!isPageTransitionsFeatureEnabled) {
+            fragmentManager.executePendingTransactions();
+        }
     }
 
     @Override
@@ -283,13 +305,56 @@ public class CustomizationPickerFragment extends AppbarFragment implements
     @Override
     public void standaloneNavigateTo(String destinationId) {
         final Fragment fragment = mFragmentFactory.create(destinationId);
+        prepareFragmentTransitionAnimation();
+
+        boolean isPageTransitionsFeatureEnabled =
+                BaseFlags.get().isPageTransitionsFeatureEnabled(requireContext());
 
         FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
         fragmentManager
                 .beginTransaction()
+                .setReorderingAllowed(isPageTransitionsFeatureEnabled)
                 .replace(R.id.fragment_container, fragment)
                 .commit();
-        fragmentManager.executePendingTransactions();
+        if (!isPageTransitionsFeatureEnabled) {
+            fragmentManager.executePendingTransactions();
+        }
+    }
+
+    private void prepareFragmentTransitionAnimation() {
+        Transition exitTransition = ((Transition) getExitTransition());
+        if (exitTransition == null) return;
+        exitTransition.addListener(new Transition.TransitionListener() {
+            @Override
+            public void onTransitionStart(@NonNull Transition transition) {
+                setSurfaceViewsVisible(false);
+            }
+
+            @Override
+            public void onTransitionEnd(@NonNull Transition transition) {
+                setSurfaceViewsVisible(true);
+            }
+
+            @Override
+            public void onTransitionCancel(@NonNull Transition transition) {
+                setSurfaceViewsVisible(true);
+                // cancelling the transition breaks the preview, therefore recreating the activity
+                requireActivity().recreate();
+            }
+
+            @Override
+            public void onTransitionPause(@NonNull Transition transition) {}
+
+            @Override
+            public void onTransitionResume(@NonNull Transition transition) {}
+        });
+    }
+
+    private void setSurfaceViewsVisible(boolean isVisible) {
+        mHomeScrollContainer.findViewById(R.id.preview)
+                .setVisibility(isVisible ? View.VISIBLE : View.INVISIBLE);
+        mLockScrollContainer.findViewById(R.id.preview)
+                .setVisibility(isVisible ? View.VISIBLE : View.INVISIBLE);
     }
 
     /** Saves state of the fragment. */
