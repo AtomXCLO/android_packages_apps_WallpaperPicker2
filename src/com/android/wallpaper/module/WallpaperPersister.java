@@ -26,6 +26,7 @@ import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 
 import com.android.wallpaper.asset.Asset;
+import com.android.wallpaper.model.StaticWallpaperMetadata;
 import com.android.wallpaper.model.WallpaperInfo;
 
 import java.io.InputStream;
@@ -133,6 +134,12 @@ public interface WallpaperPersister {
         );
 
     /**
+     * Save static image wallpaper's meta to the system preferences.
+     */
+    boolean saveStaticWallpaperToPreferences(int destination,
+            StaticWallpaperMetadata metadata);
+
+    /**
      * @return the flag indicating which wallpaper to set when we're trying to set a wallpaper with
      * no user intervention. The idea is that if there's a static wallpaper on lock, we will only
      * override home, otherwise both
@@ -146,8 +153,8 @@ public interface WallpaperPersister {
      * Android, otherwise on pre-N versions of Android will return a positive integer when the
      * operation was successful and zero if the operation encountered an error.
      */
-    int setBitmapToWallpaperManager(Bitmap wallpaperBitmap, boolean allowBackup,
-            int whichWallpaper);
+    int setBitmapToWallpaperManager(Bitmap wallpaperBitmap, Rect cropHint,
+            boolean allowBackup, int whichWallpaper);
 
     /**
      * Sets a wallpaper stream to the {@link android.app.WallpaperManager}.
@@ -156,8 +163,8 @@ public interface WallpaperPersister {
      * Android, otherwise on pre-N versions of Android will return a positive integer when the
      * operation was successful and zero if the operation encountered an error.
      */
-    int setStreamToWallpaperManager(InputStream inputStream, boolean allowBackup,
-            int whichWallpaper);
+    int setStreamToWallpaperManager(InputStream inputStream, Rect cropHint,
+            boolean allowBackup, int whichWallpaper);
 
     /**
      * Saves the last wallpaper which showed a preview from this app.

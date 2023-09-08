@@ -250,6 +250,7 @@ internal constructor(
                     getDisplayUtils(context),
                     getBitmapCropper(),
                     getWallpaperStatusChecker(context),
+                    getFlags().isRefactorSettingWallpaper(),
                 )
                 .also { wallpaperPersister = it }
     }
@@ -355,6 +356,10 @@ internal constructor(
 
     override fun getMyPhotosIntentProvider(): MyPhotosStarter.MyPhotosIntentProvider {
         return object : MyPhotosStarter.MyPhotosIntentProvider {}
+    }
+
+    override fun isCurrentSelectedColorPreset(context: Context): Boolean {
+        return false
     }
 
     companion object {

@@ -57,7 +57,14 @@ public final class TestAsset extends Asset {
     }
 
     @Override
-    public void decodeBitmap(int targetWidth, int targetHeight, BitmapReceiver receiver) {
+    public void decodeBitmap(BitmapReceiver receiver) {
+        Handler.getMain().post(() ->
+                receiver.onBitmapDecoded(mBitmap));
+    }
+
+    @Override
+    public void decodeBitmap(int targetWidth, int targetHeight, boolean useHardwareBitmapIfPossible,
+            BitmapReceiver receiver) {
         Handler.getMain().post(() ->
                 receiver.onBitmapDecoded(mBitmap));
     }

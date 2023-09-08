@@ -22,6 +22,7 @@ import android.graphics.Rect;
 import androidx.annotation.Nullable;
 
 import com.android.wallpaper.asset.Asset;
+import com.android.wallpaper.model.StaticWallpaperMetadata;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.module.WallpaperChangedNotifier;
@@ -52,6 +53,8 @@ public class TestWallpaperPersister implements WallpaperPersister {
     private Rect mCropRect;
     private float mScale;
     private WallpaperInfo mWallpaperInfo;
+    private StaticWallpaperMetadata mHomeStaticWallpaperMetadata;
+    private StaticWallpaperMetadata mLockStaticWallpaperMetadata;
 
     public TestWallpaperPersister(Context appContext) {
         mAppContext = appContext;
@@ -211,19 +214,32 @@ public class TestWallpaperPersister implements WallpaperPersister {
     }
 
     @Override
+    public boolean saveStaticWallpaperToPreferences(int destination,
+            StaticWallpaperMetadata metadata) {
+        if (destination == DEST_HOME_SCREEN || destination == DEST_BOTH) {
+            mHomeStaticWallpaperMetadata = metadata;
+        }
+
+        if (destination == DEST_LOCK_SCREEN || destination == DEST_BOTH) {
+            mLockStaticWallpaperMetadata = metadata;
+        }
+        return true;
+    }
+
+    @Override
     public int getDefaultWhichWallpaper() {
         return 0;
     }
 
     @Override
-    public int setBitmapToWallpaperManager(Bitmap wallpaperBitmap, boolean allowBackup,
-            int whichWallpaper) {
+    public int setBitmapToWallpaperManager(Bitmap wallpaperBitmap, Rect cropHint,
+            boolean allowBackup, int whichWallpaper) {
         return 1;
     }
 
     @Override
-    public int setStreamToWallpaperManager(InputStream inputStream, boolean allowBackup,
-            int whichWallpaper) {
+    public int setStreamToWallpaperManager(InputStream inputStream, Rect cropHint,
+            boolean allowBackup, int whichWallpaper) {
         return 1;
     }
 }

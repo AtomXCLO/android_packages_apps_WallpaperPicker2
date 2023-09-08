@@ -32,6 +32,7 @@ import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
 import com.android.wallpaper.module.LargeScreenMultiPanesChecker;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
+import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity;
 import com.android.wallpaper.util.ActivityUtils;
 
 /**
@@ -63,9 +64,7 @@ public class PreviewActivity extends BasePreviewActivity implements AppbarFragme
         if (fragment == null) {
             Intent intent = getIntent();
             WallpaperInfo wallpaper = intent.getParcelableExtra(EXTRA_WALLPAPER_INFO);
-            BaseFlags flags = InjectorProvider.getInjector().getFlags();
-            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, !flags
-                    .isFullscreenWallpaperPreviewEnabled(this));
+            boolean viewAsHome = intent.getBooleanExtra(EXTRA_VIEW_AS_HOME, false);
             boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
             fragment = InjectorProvider.getInjector().getPreviewFragment(
                     /* context */ this,
@@ -120,15 +119,16 @@ public class PreviewActivity extends BasePreviewActivity implements AppbarFragme
         @Override
         public Intent newIntent(Context context, WallpaperInfo wallpaper) {
             final BaseFlags flags = InjectorProvider.getInjector().getFlags();
+            LargeScreenMultiPanesChecker multiPanesChecker = new LargeScreenMultiPanesChecker();
+            final boolean isMultiPanel = multiPanesChecker.isMultiPanesEnabled(context);
+
             if (flags.isMultiCropPreviewUiEnabled() && flags.isMultiCropEnabled()) {
-                // TODO(b/291761856): Start new preview flow
-                return new Intent();
+                return WallpaperPreviewActivity.Companion.newIntent(context,
+                        wallpaper, /* isNewTask= */ isMultiPanel);
             }
 
-            LargeScreenMultiPanesChecker multiPanesChecker = new LargeScreenMultiPanesChecker();
             // Launch a full preview activity for devices supporting multipanel mode
-            if (multiPanesChecker.isMultiPanesEnabled(context)
-                    && flags.isFullscreenWallpaperPreviewEnabled(context)) {
+            if (isMultiPanel) {
                 return FullPreviewActivity.newIntent(context, wallpaper);
             }
 
