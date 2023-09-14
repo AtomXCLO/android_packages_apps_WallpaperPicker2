@@ -78,7 +78,7 @@ internal constructor(
     private var systemFeatureChecker: SystemFeatureChecker? = null
     private var userEventLogger: UserEventLogger? = null
     private var wallpaperPersister: WallpaperPersister? = null
-    private var prefs: WallpaperPreferences? = null
+    @Inject lateinit var prefs: WallpaperPreferences
     private var wallpaperPreviewFragmentManager: WallpaperPreviewFragmentManager? = null
     private var wallpaperRefresher: WallpaperRefresher? = null
     private var wallpaperRotationRefresher: WallpaperRotationRefresher? = null
@@ -209,7 +209,8 @@ internal constructor(
         mode: Int,
         viewAsHome: Boolean,
         viewFullScreen: Boolean,
-        testingModeEnabled: Boolean
+        testingModeEnabled: Boolean,
+        isAssetIdPresent: Boolean
     ): Fragment {
         val args = Bundle()
         args.putParcelable(PreviewFragment.ARG_WALLPAPER, wallpaperInfo)
@@ -217,6 +218,7 @@ internal constructor(
         args.putBoolean(PreviewFragment.ARG_VIEW_AS_HOME, viewAsHome)
         args.putBoolean(PreviewFragment.ARG_FULL_SCREEN, viewFullScreen)
         args.putBoolean(PreviewFragment.ARG_TESTING_MODE_ENABLED, testingModeEnabled)
+        args.putBoolean(PreviewFragment.ARG_IS_ASSET_ID_PRESENT, isAssetIdPresent)
         val fragment =
             if (wallpaperInfo is LiveWallpaperInfo) LivePreviewFragment()
             else ImagePreviewFragment()
@@ -257,7 +259,7 @@ internal constructor(
 
     @Synchronized
     override fun getPreferences(context: Context): WallpaperPreferences {
-        return prefs ?: DefaultWallpaperPreferences(context.applicationContext).also { prefs = it }
+        return prefs
     }
 
     @Synchronized

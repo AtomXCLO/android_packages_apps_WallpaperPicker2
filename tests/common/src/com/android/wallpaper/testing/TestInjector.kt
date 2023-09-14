@@ -15,7 +15,6 @@
  */
 package com.android.wallpaper.testing
 
-import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -54,7 +53,6 @@ import com.android.wallpaper.network.Requester
 import com.android.wallpaper.picker.ImagePreviewFragment
 import com.android.wallpaper.picker.MyPhotosStarter
 import com.android.wallpaper.picker.PreviewFragment
-import com.android.wallpaper.picker.customization.data.content.WallpaperClientImpl
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
 import com.android.wallpaper.picker.customization.domain.interactor.WallpaperSnapshotRestorer
@@ -93,6 +91,7 @@ open class TestInjector : Injector {
     private var wallpaperInteractor: WallpaperInteractor? = null
     private var wallpaperSnapshotRestorer: WallpaperSnapshotRestorer? = null
     private var wallpaperColorsViewModel: WallpaperColorsViewModel? = null
+    private var wallpaperClient: FakeWallpaperClient? = null
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return appScope ?: CoroutineScope(Dispatchers.Main).also { appScope = it }
@@ -184,7 +183,8 @@ open class TestInjector : Injector {
         mode: Int,
         viewAsHome: Boolean,
         viewFullScreen: Boolean,
-        testingModeEnabled: Boolean
+        testingModeEnabled: Boolean,
+        isAssetIdPresent: Boolean
     ): Fragment {
         val args = Bundle()
         args.putParcelable(PreviewFragment.ARG_WALLPAPER, wallpaperInfo)
@@ -282,12 +282,7 @@ open class TestInjector : Injector {
                     repository =
                         WallpaperRepository(
                             scope = getApplicationCoroutineScope(),
-                            client =
-                                WallpaperClientImpl(
-                                    context = context,
-                                    infoFactory = getCurrentWallpaperInfoFactory(context),
-                                    wallpaperManager = WallpaperManager.getInstance(context)
-                                ),
+                            client = getWallpaperClient(),
                             wallpaperPreferences = getPreferences(context = context),
                             backgroundDispatcher = Dispatchers.IO,
                         ),
@@ -315,5 +310,9 @@ open class TestInjector : Injector {
 
     override fun isCurrentSelectedColorPreset(context: Context): Boolean {
         return false
+    }
+
+    fun getWallpaperClient(): FakeWallpaperClient {
+        return wallpaperClient ?: FakeWallpaperClient().also { wallpaperClient = it }
     }
 }
