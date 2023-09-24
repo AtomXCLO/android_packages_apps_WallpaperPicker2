@@ -24,7 +24,6 @@ import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.View
 import android.widget.FrameLayout
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.LifecycleOwner
@@ -113,21 +112,19 @@ open class ScreenPreviewSectionController(
             previewHost.layoutParams = layoutParams
         }
 
-        val onClickListener =
-            View.OnClickListener {
+        view
+            .requireViewById<ScreenPreviewClickView>(R.id.screen_preview_click_view)
+            .setOnPreviewClickedListener {
                 lifecycleOwner.lifecycleScope.launch {
                     getWallpaperInfo()?.let { wallpaperInfo ->
                         wallpaperPreviewNavigator.showViewOnlyPreview(
                             wallpaperInfo,
                             !isOnLockScreen,
-                            false
                         )
                     }
                 }
             }
-        view
-            .requireViewById<ScreenPreviewClickView>(R.id.screen_preview_click_view)
-            .setOnClickListener(onClickListener)
+
         val previewView: CardView = view.requireViewById(R.id.preview)
 
         bindScreenPreview(previewView, context, !params.isWallpaperVisibilityControlledByTab)

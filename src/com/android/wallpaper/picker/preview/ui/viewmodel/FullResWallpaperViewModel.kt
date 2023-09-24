@@ -13,19 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.android.wallpaper.picker.preview.ui.viewmodel
 
-package com.android.wallpaper.picker.di.modules
+import android.graphics.Bitmap
+import android.graphics.Point
 
-import com.android.wallpaper.picker.di.navigation.NavigationController
-import com.android.wallpaper.picker.di.navigation.NavigationControllerImpl
-import dagger.Binds
-import dagger.Module
-import dagger.hilt.InstallIn
-import dagger.hilt.android.components.ActivityComponent
-
-@InstallIn(ActivityComponent::class)
-@Module
-abstract class NavigationModule {
-    @Binds
-    abstract fun bindNavigationController(impl: NavigationControllerImpl): NavigationController
-}
+data class FullResWallpaperViewModel(
+    val rawWallpaperBitmap: Bitmap,
+    val rawWallpaperSize: Point,
+    val offsetToStart: Boolean,
+)
