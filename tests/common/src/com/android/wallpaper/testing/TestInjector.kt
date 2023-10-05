@@ -27,7 +27,7 @@ import com.android.wallpaper.config.BaseFlags
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.model.CategoryProvider
 import com.android.wallpaper.model.InlinePreviewIntentFactory
-import com.android.wallpaper.model.WallpaperColorsViewModel
+import com.android.wallpaper.model.WallpaperColorsRepository
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.module.AlarmManagerWrapper
 import com.android.wallpaper.module.BitmapCropper
@@ -46,7 +46,6 @@ import com.android.wallpaper.module.UserEventLogger
 import com.android.wallpaper.module.WallpaperPersister
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.WallpaperRefresher
-import com.android.wallpaper.module.WallpaperRotationRefresher
 import com.android.wallpaper.module.WallpaperStatusChecker
 import com.android.wallpaper.monitor.PerformanceMonitor
 import com.android.wallpaper.network.Requester
@@ -85,13 +84,12 @@ open class TestInjector : Injector {
     private var wallpaperPersister: WallpaperPersister? = null
     private var prefs: WallpaperPreferences? = null
     private var wallpaperRefresher: WallpaperRefresher? = null
-    private var wallpaperRotationRefresher: WallpaperRotationRefresher? = null
     private var wallpaperStatusChecker: WallpaperStatusChecker? = null
     private var flags: BaseFlags? = null
     private var undoInteractor: UndoInteractor? = null
     private var wallpaperInteractor: WallpaperInteractor? = null
     private var wallpaperSnapshotRestorer: WallpaperSnapshotRestorer? = null
-    private var wallpaperColorsViewModel: WallpaperColorsViewModel? = null
+    private var wallpaperColorsRepository: WallpaperColorsRepository? = null
     private var wallpaperClient: FakeWallpaperClient? = null
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
@@ -223,17 +221,6 @@ open class TestInjector : Injector {
             ?: TestWallpaperRefresher(context.applicationContext).also { wallpaperRefresher = it }
     }
 
-    override fun getWallpaperRotationRefresher(): WallpaperRotationRefresher {
-        return wallpaperRotationRefresher
-            ?: WallpaperRotationRefresher {
-                    context: Context?,
-                    listener: WallpaperRotationRefresher.Listener ->
-                    // Not implemented
-                    listener.onError()
-                }
-                .also { wallpaperRotationRefresher = it }
-    }
-
     override fun getWallpaperStatusChecker(context: Context): WallpaperStatusChecker {
         return wallpaperStatusChecker
             ?: TestWallpaperStatusChecker().also { wallpaperStatusChecker = it }
@@ -294,9 +281,9 @@ open class TestInjector : Injector {
                 .also { wallpaperSnapshotRestorer = it }
     }
 
-    override fun getWallpaperColorsViewModel(): WallpaperColorsViewModel {
-        return wallpaperColorsViewModel
-            ?: WallpaperColorsViewModel().also { wallpaperColorsViewModel = it }
+    override fun getWallpaperColorsRepository(): WallpaperColorsRepository {
+        return wallpaperColorsRepository
+            ?: WallpaperColorsRepository().also { wallpaperColorsRepository = it }
     }
 
     override fun getMyPhotosIntentProvider(): MyPhotosStarter.MyPhotosIntentProvider {

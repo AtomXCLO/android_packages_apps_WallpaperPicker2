@@ -79,6 +79,7 @@ import com.android.wallpaper.widget.WallpaperControlButtonGroup;
 import com.android.wallpaper.widget.floatingsheetcontent.WallpaperInfoContent;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.transition.MaterialSharedAxis;
 
 /**
  * Base Fragment to display the UI for previewing an individual wallpaper.
@@ -141,7 +142,7 @@ public abstract class PreviewFragment extends Fragment implements WallpaperColor
 
     protected ProgressBar mProgressBar;
 
-    private boolean mIsViewAsHome;
+    protected boolean mIsViewAsHome;
 
     /**
      * We create an instance of WallpaperInfo from CurrentWallpaperInfo when a user taps on
@@ -242,6 +243,11 @@ public abstract class PreviewFragment extends Fragment implements WallpaperColor
         });
 
         mShortAnimTimeMillis = getResources().getInteger(android.R.integer.config_shortAnimTime);
+        setEnterTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ true));
+        setReturnTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ false));
+        setExitTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ true));
+        setReenterTransition(new MaterialSharedAxis(MaterialSharedAxis.X, /* forward */ false));
+
     }
 
     @Override
@@ -544,7 +550,6 @@ public abstract class PreviewFragment extends Fragment implements WallpaperColor
             return;
         }
         activity.finish();
-        activity.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 
     private void showDestinationSelectionDialogForWallpaper(WallpaperInfo wallpaperInfo) {
