@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.module;
+package com.android.wallpaper.module.logging;
 
 import static android.stats.style.StyleEnums.EFFECT_APPLIED_ABORTED;
 import static android.stats.style.StyleEnums.EFFECT_APPLIED_OFF;
@@ -51,20 +51,16 @@ public interface UserEventLogger {
     int DAILY_WALLPAPER_METADATA_FAILURE_SERVER_ERROR = 3;
     int DAILY_WALLPAPER_METADATA_FAILURE_TIMEOUT = 4;
 
-    void logResumed(boolean provisioned, boolean wallpaper);
-
-    void logStopped();
-
+    /** */
     void logAppLaunched(Intent launchSource);
 
-    void logDailyRefreshTurnedOn();
-
-    void logCurrentWallpaperPreviewed();
-
+    /** */
     void logActionClicked(String collectionId, int actionLabelResId);
 
+    /** */
     void logIndividualWallpaperSelected(String collectionId);
 
+    /** */
     void logCategorySelected(String collectionId);
 
     /**
@@ -81,6 +77,7 @@ public interface UserEventLogger {
      */
     void logWallpaperSet(String collectionId, String wallpaperId, String effects);
 
+    /** */
     void logWallpaperSetResult(@WallpaperSetResult int result);
 
     /**
@@ -99,21 +96,6 @@ public interface UserEventLogger {
      * midnight to midnight) if daily rotation has been enabled at least since midnight yesterday.
      */
     void logNumDailyWallpaperRotationsPreviousDay();
-
-    /**
-     * Logs given the hour of day that a successful "daily wallpaper" rotation occurred.
-     *
-     * @param hour An hour from 0 to 23.
-     */
-    void logDailyWallpaperRotationHour(int hour);
-
-    /**
-     * Logs whether the image file for the daily wallpaper "rotating image wallpaper" is successfully
-     * decoded as a bitmap.
-     *
-     * @param decodes Whether the decode succeeded.
-     */
-    void logDailyWallpaperDecodes(boolean decodes);
 
     /**
      * Logs the last-known status of daily wallpapers on the device.
@@ -148,8 +130,8 @@ public interface UserEventLogger {
     void logNumDaysDailyRotationFailed(int days);
 
     /**
-     * Logs the number of consecutive days that daily rotation was not attempted but should have been
-     * attempted ("network conditions not met" doesn't count).
+     * Logs the number of consecutive days that daily rotation was not attempted but should have
+     * been attempted ("network conditions not met" doesn't count).
      */
     void logNumDaysDailyRotationNotAttempted(int days);
 
@@ -159,8 +141,8 @@ public interface UserEventLogger {
     void logStandalonePreviewLaunched();
 
     /**
-     * Logs whether the image URI passed to StandalonePreviewActivity came properly preconfigured with
-     * read permissions.
+     * Logs whether the image URI passed to StandalonePreviewActivity came properly preconfigured
+     * with read permissions.
      */
     void logStandalonePreviewImageUriHasReadPermission(boolean isReadPermissionGranted);
 

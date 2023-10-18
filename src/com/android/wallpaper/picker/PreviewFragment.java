@@ -68,9 +68,9 @@ import com.android.wallpaper.model.SetWallpaperViewModel;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.Injector;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.module.UserEventLogger;
 import com.android.wallpaper.module.WallpaperPersister.Destination;
 import com.android.wallpaper.module.WallpaperSetter;
+import com.android.wallpaper.module.logging.UserEventLogger;
 import com.android.wallpaper.util.PreviewUtils;
 import com.android.wallpaper.util.ResourceUtils;
 import com.android.wallpaper.widget.DuoTabs;
@@ -152,7 +152,7 @@ public abstract class PreviewFragment extends Fragment implements WallpaperColor
      * This is needed for restricting the destination where a wallpaper can be set after editing
      * it.
      */
-    private boolean mIsAssetIdPresent;
+    protected boolean mIsAssetIdPresent;
 
     /**
      * True if the activity of this fragment is launched with {@link Intent#FLAG_ACTIVITY_NEW_TASK}.

@@ -21,19 +21,18 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
-import androidx.navigation.fragment.findNavController
 import com.android.wallpaper.R
-import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.dispatchers.MainDispatcher
 import com.android.wallpaper.picker.AppbarFragment
-import com.android.wallpaper.picker.customization.domain.interactor.WallpaperInteractor
-import com.android.wallpaper.picker.customization.ui.binder.ScreenPreviewBinder
-import com.android.wallpaper.picker.customization.ui.viewmodel.ScreenPreviewViewModel
-import com.android.wallpaper.picker.preview.di.modules.preview.utils.PreviewUtilsModule
-import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewTransitionViewModel
+import com.android.wallpaper.picker.preview.ui.binder.SmallPreviewBinder
+import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.PreviewViewPagerSynchronizationBinder
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import com.android.wallpaper.util.PreviewUtils
+import com.android.wallpaper.picker.wallpaper.utils.DualDisplayAspectRatioLayout
+import com.android.wallpaper.util.DisplayUtils
+import com.android.wallpaper.util.RtlUtils
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * This fragment displays the preview of the selected wallpaper on all available workspaces and
@@ -42,9 +41,8 @@ import javax.inject.Inject
 @AndroidEntryPoint(AppbarFragment::class)
 class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
 
-    @Inject lateinit var wallpaperInteractor: WallpaperInteractor
-
-    @PreviewUtilsModule.LockScreenPreviewUtils @Inject lateinit var lockPreviewUtils: PreviewUtils
+    @Inject lateinit var displayUtils: DisplayUtils
+    @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
 
@@ -54,7 +52,11 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         savedInstanceState: Bundle?
     ): View {
         val view =
-            inflater.inflate(R.layout.fragment_small_preview, container, /* attachToRoot= */ false)
+            if (displayUtils.hasMultiInternalDisplays()) {
+                inflater.inflate(R.layout.fragment_small_preview_for_two_screens, container, false)
+            } else {
+                inflater.inflate(R.layout.fragment_small_preview_handheld, container, false)
+            }
         setUpToolbar(view)
         bindScreenPreview(view)
 
@@ -74,32 +76,52 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
         return ContextCompat.getColor(requireContext(), R.color.system_on_surface)
     }
 
-    // TODO(b/291761856): Replace placeholder preview
     private fun bindScreenPreview(view: View) {
+        val activity = activity ?: return
+        val applicationContext = activity.applicationContext
+        val isSingleDisplayOrUnfoldedHorizontalHinge =
+            displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity)
+        val isRtl = RtlUtils.isRtl(applicationContext)
 
-        ScreenPreviewBinder.bind(
-            activity = requireActivity(),
-            previewView = view.requireViewById(R.id.preview),
-            viewModel =
-                ScreenPreviewViewModel(
-                    previewUtils = lockPreviewUtils,
-                    wallpaperInfoProvider = { wallpaperPreviewViewModel.editingWallpaper },
-                    wallpaperInteractor = wallpaperInteractor,
-                    screen = Screen.HOME_SCREEN,
-                    onPreviewClicked = {
-                        // TODO(b/291761856): update preview transition view model from
-                        //                    [SmallPreviewFragment].
-                        wallpaperPreviewViewModel.previewTransitionViewModel =
-                            PreviewTransitionViewModel(
-                                previewTab = Screen.HOME_SCREEN,
-                            )
-                        findNavController()
-                            .navigate(R.id.action_smallPreviewFragment_to_fullPreviewFragment)
-                    }
-                ),
-            lifecycleOwner = viewLifecycleOwner,
-            offsetToStart = false,
-            onWallpaperPreviewDirty = { activity?.recreate() },
-        )
+        if (displayUtils.hasMultiInternalDisplays()) {
+            val dualDisplayAspectRatioView: DualDisplayAspectRatioLayout =
+                view.requireViewById(R.id.dual_preview)
+            dualDisplayAspectRatioView.setDisplaySizes(
+                displayUtils.getRealSize(displayUtils.getSmallerDisplay()),
+                displayUtils.getRealSize(displayUtils.getWallpaperDisplay())
+            )
+            SmallPreviewBinder.bind(
+                applicationContext = applicationContext,
+                view = view.requireViewById(DualDisplayAspectRatioLayout.foldedPreviewId),
+                viewModel = wallpaperPreviewViewModel,
+                mainScope = mainScope,
+                lifecycleOwner = viewLifecycleOwner,
+                isSingleDisplayOrUnfoldedHorizontalHinge = isSingleDisplayOrUnfoldedHorizontalHinge,
+                isRtl = isRtl,
+            )
+            SmallPreviewBinder.bind(
+                applicationContext = applicationContext,
+                view = view.requireViewById(DualDisplayAspectRatioLayout.unfoldedPreviewId),
+                viewModel = wallpaperPreviewViewModel,
+                mainScope = mainScope,
+                lifecycleOwner = viewLifecycleOwner,
+                isSingleDisplayOrUnfoldedHorizontalHinge = isSingleDisplayOrUnfoldedHorizontalHinge,
+                isRtl = isRtl,
+            )
+        } else {
+            PreviewViewPagerSynchronizationBinder.bind(
+                view.requireViewById(R.id.pager_tabs),
+                view.requireViewById(R.id.pager_previews),
+                displayUtils.getRealSize(displayUtils.getSmallerDisplay()),
+                resources,
+                // TODO: pass correct view models for the view pager
+                listOf(wallpaperPreviewViewModel, wallpaperPreviewViewModel),
+                applicationContext,
+                isSingleDisplayOrUnfoldedHorizontalHinge,
+                viewLifecycleOwner,
+                isRtl,
+                mainScope
+            )
+        }
     }
 }
