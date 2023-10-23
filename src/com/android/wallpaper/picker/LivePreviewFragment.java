@@ -16,6 +16,7 @@
 package com.android.wallpaper.picker;
 
 import static android.app.Activity.RESULT_OK;
+import static android.stats.style.StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
@@ -122,8 +123,14 @@ public class LivePreviewFragment extends PreviewFragment {
                 return;
             }
         }
-        mWallpaperSetter.setCurrentWallpaper(getActivity(), mWallpaper, null,
-                destination, 0, null,
+        mWallpaperSetter.setCurrentWallpaper(
+                getActivity(),
+                mWallpaper,
+                null,
+                SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
+                destination,
+                0,
+                null,
                 mWallpaperColors != null ? mWallpaperColors : getColorInfo().getWallpaperColors(),
                 callback);
     }
@@ -164,6 +171,8 @@ public class LivePreviewFragment extends PreviewFragment {
             if (result == RESULT_OK) {
                 if (creativeWallpaper.canBeDeleted() || creativeWallpaper.isApplied(
                         currentWallpaper)) {
+                    // When editing an existing wallpaper and pressing "Done" button causing the
+                    // overlays to become visible
                     showOverlays();
                     overrideOnBackPressed(new OnBackPressedCallback(true) {
                         @Override
@@ -172,16 +181,19 @@ public class LivePreviewFragment extends PreviewFragment {
                         }
                     });
                 } else {
+                    // When in the process of creating a new wallpaper and pressing "Done" button.
                     showOverlays();
                     overrideOnBackPressed(mSettingsOnBackPressedCallback);
                 }
             } else {
-                // Editing flow of a creative category wallpaper
+                // When you initiate the editing process for a wallpaper and then decide to exit
+                // by pressing the back button during editing.
                 if (creativeWallpaper.canBeDeleted() || creativeWallpaper.isApplied(
                         currentWallpaper)) {
                     showOverlays();
-                // Flow where back key is pressed by user from the settings activity
                 } else {
+                    // Flow where user opens a template (so the settings activity is launched)
+                    // but user just simply presses back (without moving on to the next screen)
                     // TODO: This should ideally be a slide transition, but custom slide transition
                     // does not work properly, so having a fade transition for now
                     finishActivityWithFadeTransition();
@@ -455,7 +467,6 @@ public class LivePreviewFragment extends PreviewFragment {
             if (savedInstanceState == null) {
                 // First time at Fragment should initialize wallpaper preview.
                 creativeWallpaper.initializeWallpaperPreview(context);
-
             }
 
             if (savedInstanceState == null || isSettingsActivityPresent) {

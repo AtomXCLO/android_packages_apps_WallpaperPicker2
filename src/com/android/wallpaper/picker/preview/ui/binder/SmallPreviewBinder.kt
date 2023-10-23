@@ -16,22 +16,17 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
-import android.view.LayoutInflater
-import android.view.SurfaceControlViewHost
-import android.view.SurfaceHolder
+import android.graphics.Point
 import android.view.SurfaceView
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import com.android.wallpaper.R
 import com.android.wallpaper.dispatchers.MainDispatcher
-import com.android.wallpaper.model.LiveWallpaperInfo
-import com.android.wallpaper.module.WallpaperPersister
+import com.android.wallpaper.module.CustomizationSections
+import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewTransitionViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
-import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.setUpSurface
+import com.android.wallpaper.util.PreviewUtils
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 object SmallPreviewBinder {
 
@@ -40,86 +35,39 @@ object SmallPreviewBinder {
         view: View,
         viewModel: WallpaperPreviewViewModel,
         @MainDispatcher mainScope: CoroutineScope,
-        lifecycleOwner: LifecycleOwner,
+        viewLifecycleOwner: LifecycleOwner,
         isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
         isRtl: Boolean,
+        previewDisplaySize: Point,
+        previewDisplayId: Int? = null,
+        previewUtils: PreviewUtils? = null,
+        navigate: (() -> Unit)? = null,
     ) {
-        val surface = view.requireViewById<SurfaceView>(R.id.wallpaper_surface)
-        surface.setZOrderMediaOverlay(true)
-        surface.holder.addCallback(
-            object : SurfaceHolder.Callback {
-                override fun surfaceCreated(holder: SurfaceHolder) {
-                    val wallpaper = viewModel.editingWallpaper
-                    if (wallpaper is LiveWallpaperInfo) {
-                        lifecycleOwner.lifecycleScope.launch {
-                            surface.setUpSurface(applicationContext)
-                            WallpaperConnectionUtils.connect(
-                                applicationContext,
-                                mainScope,
-                                wallpaper.wallpaperComponent,
-                                // TODO b/301088528(giolin): Pass correspondent
-                                //                           destination for live
-                                //                           wallpaper preview
-                                WallpaperPersister.DEST_LOCK_SCREEN,
-                                surface,
-                            )
-                        }
-                    } else {
-                        val staticWallpaperPreview =
-                            LayoutInflater.from(applicationContext)
-                                .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                        // We need to attach the ordinary view to a surface view since
-                        // we overlay lock screen and home screen UI on top of the wallpaper.
-                        attachStaticWallpaperPreviewToSurface(
-                            applicationContext,
-                            staticWallpaperPreview,
-                            surface,
-                        )
-                        StaticWallpaperPreviewBinder.bind(
-                            fullResImageView =
-                                staticWallpaperPreview.requireViewById(R.id.full_res_image),
-                            lowResImageView =
-                                staticWallpaperPreview.requireViewById(R.id.low_res_image),
-                            viewModel = viewModel.getStaticWallpaperPreviewViewModel(),
-                            lifecycleOwner = lifecycleOwner,
-                            isSingleDisplayOrUnfoldedHorizontalHinge =
-                                isSingleDisplayOrUnfoldedHorizontalHinge,
-                            isRtl,
-                        )
-                    }
-                }
+        view.setOnClickListener {
+            // TODO(b/291761856): update preview transition view model from
+            //                    [SmallPreviewFragment].
+            viewModel.previewTransitionViewModel =
+                PreviewTransitionViewModel(
+                    previewTab = CustomizationSections.Screen.HOME_SCREEN,
+                    targetDisplaySize = previewDisplaySize,
+                )
+            navigate?.invoke()
+        }
+        val workspaceSurface = view.requireViewById<SurfaceView>(R.id.workspace_surface)
+        workspaceSurface.visibility = View.VISIBLE
+        workspaceSurface.setZOrderMediaOverlay(true)
+        previewUtils?.let { WorkspacePreviewBinder.bind(workspaceSurface, it, previewDisplayId) }
 
-                override fun surfaceChanged(
-                    holder: SurfaceHolder,
-                    format: Int,
-                    width: Int,
-                    height: Int
-                ) {}
-
-                override fun surfaceDestroyed(holder: SurfaceHolder) {}
-            }
+        val wallpaperSurface = view.requireViewById<SurfaceView>(R.id.wallpaper_surface)
+        wallpaperSurface.setZOrderMediaOverlay(true)
+        WallpaperPreviewBinder.bind(
+            applicationContext,
+            wallpaperSurface,
+            viewModel,
+            mainScope,
+            viewLifecycleOwner,
+            isSingleDisplayOrUnfoldedHorizontalHinge,
+            isRtl
         )
-        // TODO b/300979155(giolin): Clean up surface when no longer needed, e.g. onDestroyed
-    }
-
-    private fun attachStaticWallpaperPreviewToSurface(
-        applicationContext: Context,
-        preview: View,
-        surface: SurfaceView
-    ) {
-        val width = surface.width
-        val height = surface.height
-        preview.measure(
-            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
-        )
-        preview.layout(0, 0, width, height)
-        val host = SurfaceControlViewHost(applicationContext, surface.display, surface.hostToken)
-        host.setView(
-            preview,
-            preview.width,
-            preview.height,
-        )
-        host.surfacePackage?.let { surface.setChildSurfacePackage(it) }
     }
 }
