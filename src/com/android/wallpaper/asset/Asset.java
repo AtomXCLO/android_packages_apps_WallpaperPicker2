@@ -37,11 +37,13 @@ import androidx.annotation.WorkerThread;
 
 import com.android.wallpaper.module.BitmapCropper;
 import com.android.wallpaper.module.InjectorProvider;
+import com.android.wallpaper.util.RtlUtils;
 import com.android.wallpaper.util.ScreenSizeCalculator;
 import com.android.wallpaper.util.WallpaperCropUtils;
 
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
 
+import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -100,6 +102,14 @@ public abstract class Asset {
      */
     public abstract void decodeBitmap(int targetWidth, int targetHeight,
             boolean hardwareBitmapAllowed, BitmapReceiver receiver);
+
+    /**
+     * Copies the asset file to another place.
+     * @param dest  The destination file.
+     */
+    public void copy(File dest) {
+        // no op
+    }
 
     /**
      * Decodes a full bitmap.
@@ -344,7 +354,7 @@ public abstract class Asset {
 
             BitmapCropper bitmapCropper = InjectorProvider.getInjector().getBitmapCropper();
             bitmapCropper.cropAndScaleBitmap(this, /* scale= */ 1f, visibleRawWallpaperRect,
-                    WallpaperCropUtils.isRtl(activity),
+                    RtlUtils.isRtl(activity),
                     new BitmapCropper.Callback() {
                         @Override
                         public void onBitmapCropped(Bitmap croppedBitmap) {

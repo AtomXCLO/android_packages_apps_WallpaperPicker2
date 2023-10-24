@@ -34,7 +34,6 @@ import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.ImageWallpaperInfo;
 import com.android.wallpaper.model.WallpaperInfo;
 import com.android.wallpaper.module.InjectorProvider;
-import com.android.wallpaper.module.UserEventLogger;
 import com.android.wallpaper.picker.AppbarFragment.AppbarFragmentHost;
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity;
 
@@ -48,18 +47,12 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
     private static final String KEY_UP_ARROW = "up_arrow";
     private static final int READ_EXTERNAL_STORAGE_PERMISSION_REQUEST_CODE = 1;
 
-    private UserEventLogger mUserEventLogger;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_preview);
 
         enableFullScreen();
-
-        mUserEventLogger = InjectorProvider.getInjector().getUserEventLogger(
-                getApplicationContext());
-        mUserEventLogger.logStandalonePreviewLaunched();
 
         Intent cropAndSetWallpaperIntent = getIntent();
         Uri imageUri = cropAndSetWallpaperIntent.getData();
@@ -73,8 +66,6 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
         // Check if READ_MEDIA_IMAGES permission is needed because the app invoking this activity
         // passed a file:// URI or a content:// URI without a flag to grant read permission.
         boolean isReadPermissionGrantedForImageUri = isReadPermissionGrantedForImageUri(imageUri);
-        mUserEventLogger.logStandalonePreviewImageUriHasReadPermission(
-                isReadPermissionGrantedForImageUri);
 
         // Request storage permission if necessary (i.e., on Android M and later if storage
         // permission has not already been granted) and delay loading the PreviewFragment until the
@@ -122,8 +113,6 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
                     && grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED;
 
-            mUserEventLogger.logStandalonePreviewStorageDialogApproved(isGranted);
-
             // Close the activity because we can't open the image without storage permission.
             if (!isGranted) {
                 finish();
@@ -148,8 +137,8 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
     }
 
     /**
-     * Creates a new instance of {@link PreviewFragment} and loads the fragment into this activity's
-     * fragment container so that it's shown to the user.
+     * Creates a new instance of {@link PreviewFragment} and loads the fragment into this
+     * activity's fragment container so that it's shown to the user.
      */
     private void loadPreviewFragment() {
         BaseFlags flags = InjectorProvider.getInjector().getFlags();
@@ -161,15 +150,12 @@ public class StandalonePreviewActivity extends BasePreviewActivity implements Ap
             finish();
             return;
         }
-
-        boolean testingModeEnabled = intent.getBooleanExtra(EXTRA_TESTING_MODE_ENABLED, false);
         Fragment fragment = InjectorProvider.getInjector().getPreviewFragment(
                 /* context */ this,
                 wallpaper,
-                PreviewFragment.MODE_CROP_AND_SET_WALLPAPER,
                 /* viewAsHome= */ true,
-                /* viewFullScreen= */ false,
-                testingModeEnabled, false);
+                /* isAssetIdPresent= */ false,
+                /* isNewTask= */ false);
         getSupportFragmentManager().beginTransaction()
                 .add(R.id.fragment_container, fragment)
                 .commit();
