@@ -62,6 +62,7 @@ import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.WallpaperSurfaceCallback
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.launch
 
 /**
@@ -148,6 +149,8 @@ object ScreenPreviewBinder {
         previewView.radius =
             previewView.resources.getDimension(R.dimen.wallpaper_picker_entry_card_corner_radius)
 
+        previewView.isClickable = true
+
         var previewSurfaceCallback: WorkspaceSurfaceHolderCallback? = null
         var wallpaperSurfaceCallback: WallpaperSurfaceCallback? = null
         var wallpaperConnection: WallpaperConnection? = null
@@ -158,6 +161,8 @@ object ScreenPreviewBinder {
         var animationTransitionProgress: Float? = null
         var animationColorToRestore: Int? = null
         var currentWallpaperThumbnail: Bitmap? = null
+
+        var disposableHandle: DisposableHandle? = null
 
         val job =
             lifecycleOwner.lifecycleScope.launch {
@@ -202,6 +207,7 @@ object ScreenPreviewBinder {
                             override fun onDestroy(owner: LifecycleOwner) {
                                 super.onDestroy(owner)
                                 if (isPageTransitionsFeatureEnabled) {
+                                    disposableHandle?.dispose()
                                     wallpaperConnection?.destroy()
                                     wallpaperConnection = null
                                 }
@@ -242,6 +248,7 @@ object ScreenPreviewBinder {
                                 )
                                 wallpaperIsReadyForReveal = false
                                 if (!isPageTransitionsFeatureEnabled) {
+                                    disposableHandle?.dispose()
                                     wallpaperConnection?.destroy()
                                     wallpaperConnection = null
                                 }
@@ -453,6 +460,7 @@ object ScreenPreviewBinder {
                             }
                             (wallpaperInfo as? LiveWallpaperInfo)?.let { liveWallpaperInfo ->
                                 if (isPageTransitionsFeatureEnabled) {
+                                    disposableHandle?.dispose()
                                     wallpaperConnection?.destroy()
                                     wallpaperConnection = null
                                 }
@@ -477,7 +485,7 @@ object ScreenPreviewBinder {
                                     // Sometimes the service gets connected before the view
                                     // is valid.
                                     // TODO(b/284233455): investigate why and remove this workaround
-                                    previewView.addOnAttachStateChangeListener(
+                                    val listener =
                                         object : OnAttachStateChangeListener {
                                             override fun onViewAttachedToWindow(v: View) {
                                                 connection.connect()
@@ -489,7 +497,11 @@ object ScreenPreviewBinder {
                                                 // Do nothing
                                             }
                                         }
-                                    )
+
+                                    previewView.addOnAttachStateChangeListener(listener)
+                                    disposableHandle = DisposableHandle {
+                                        previewView.removeOnAttachStateChangeListener(listener)
+                                    }
                                 } else {
                                     connection.connect()
                                     connection.setVisibility(showLivePreview.get())
