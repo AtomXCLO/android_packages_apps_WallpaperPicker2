@@ -18,10 +18,14 @@ package com.android.wallpaper
 import com.android.wallpaper.module.AppModule
 import com.android.wallpaper.module.Injector
 import com.android.wallpaper.module.WallpaperPreferences
+import com.android.wallpaper.module.logging.TestUserEventLogger
+import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestWallpaperPreferences
+import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.testing.TestInstallIn
 import javax.inject.Singleton
@@ -31,7 +35,17 @@ import javax.inject.Singleton
 abstract class TestModule {
     @Binds @Singleton abstract fun bindInjector(impl: TestInjector): Injector
 
+    @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
+
     @Binds
     @Singleton
     abstract fun bindWallpaperPreferences(impl: TestWallpaperPreferences): WallpaperPreferences
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideDefaultWallpaperModelFactory(): DefaultWallpaperModelFactory {
+            return DefaultWallpaperModelFactory()
+        }
+    }
 }
