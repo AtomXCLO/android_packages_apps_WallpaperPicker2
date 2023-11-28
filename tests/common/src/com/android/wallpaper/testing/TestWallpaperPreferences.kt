@@ -18,14 +18,18 @@ package com.android.wallpaper.testing
 import android.app.WallpaperColors
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Rect
 import com.android.wallpaper.model.LiveWallpaperInfo
 import com.android.wallpaper.model.StaticWallpaperMetadata
 import com.android.wallpaper.model.WallpaperInfo
+import com.android.wallpaper.model.wallpaper.ScreenOrientation
+import com.android.wallpaper.model.wallpaper.WallpaperModel
 import com.android.wallpaper.module.WallpaperPersister
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.WallpaperPreferences.PendingDailyWallpaperUpdateStatus
 import com.android.wallpaper.module.WallpaperPreferences.PendingWallpaperSetStatus
 import com.android.wallpaper.module.WallpaperPreferences.PresentationMode
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -71,10 +75,6 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
     @PendingDailyWallpaperUpdateStatus private var mPendingDailyWallpaperUpdateStatus = 0
     private var mNumDaysDailyRotationFailed = 0
     private var mNumDaysDailyRotationNotAttempted = 0
-    private var mHomeWallpaperActionLabelRes = 0
-    private var mHomeWallpaperActionIconRes = 0
-    private var mLockWallpaperActionLabelRes = 0
-    private var mLockWallpaperActionIconRes = 0
     private var mHomeWallpaperEffects: String? = null
     private var mLockWallpaperEffects: String? = null
     private var mHomeStaticWallpaperMetadata: StaticWallpaperMetadata? = null
@@ -114,22 +114,6 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
 
     override fun setHomeWallpaperActionUrl(actionUrl: String?) {
         homeActionUrl = actionUrl
-    }
-
-    override fun getHomeWallpaperActionLabelRes(): Int {
-        return mHomeWallpaperActionLabelRes
-    }
-
-    override fun setHomeWallpaperActionLabelRes(resId: Int) {
-        mHomeWallpaperActionLabelRes = resId
-    }
-
-    override fun getHomeWallpaperActionIconRes(): Int {
-        return mHomeWallpaperActionIconRes
-    }
-
-    override fun setHomeWallpaperActionIconRes(resId: Int) {
-        mHomeWallpaperActionIconRes = resId
     }
 
     override fun getHomeWallpaperCollectionId(): String? {
@@ -216,22 +200,6 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
 
     override fun setLockWallpaperActionUrl(actionUrl: String?) {
         lockActionUrl = actionUrl
-    }
-
-    override fun getLockWallpaperActionLabelRes(): Int {
-        return mLockWallpaperActionLabelRes
-    }
-
-    override fun setLockWallpaperActionLabelRes(resId: Int) {
-        mLockWallpaperActionLabelRes = resId
-    }
-
-    override fun getLockWallpaperActionIconRes(): Int {
-        return mLockWallpaperActionIconRes
-    }
-
-    override fun setLockWallpaperActionIconRes(resId: Int) {
-        mLockWallpaperActionIconRes = resId
     }
 
     override fun getLockWallpaperCollectionId(): String? {
@@ -490,6 +458,13 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
         collectionId: String?,
         croppedWallpaperBitmap: Bitmap,
         colors: WallpaperColors
+    ) {}
+
+    override suspend fun addStaticWallpaperToRecentWallpapers(
+        destination: WallpaperDestination,
+        wallpaperModel: WallpaperModel.StaticWallpaperModel,
+        bitmap: Bitmap,
+        cropHints: Map<ScreenOrientation, Rect?>
     ) {}
 
     private fun setAppLaunchCount(count: Int) {
