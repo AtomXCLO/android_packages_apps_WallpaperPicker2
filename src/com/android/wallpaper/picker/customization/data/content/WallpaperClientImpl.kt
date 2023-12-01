@@ -141,6 +141,7 @@ class WallpaperClientImpl(
                 wallpaperManagerId,
                 wallpaperModel.commonWallpaperData.id.uniqueId,
                 // TODO (b/309139122): Introduce crop hints to StaticWallpaperMetadata
+                cropHints = null,
             )
         if (destination == WallpaperDestination.HOME || destination == WallpaperDestination.BOTH) {
             wallpaperPreferences.clearHomeWallpaperMetadata()
@@ -258,6 +259,7 @@ class WallpaperClientImpl(
 
     override suspend fun loadThumbnail(
         wallpaperId: String,
+        destination: WallpaperDestination
     ): Bitmap? {
         if (areRecentsAvailable()) {
             try {
@@ -265,7 +267,10 @@ class WallpaperClientImpl(
                 @Suppress("BlockingMethodInNonBlockingContext")
                 context.contentResolver
                     .openFile(
-                        GET_THUMBNAIL_BASE_URI.buildUpon().appendPath(wallpaperId).build(),
+                        GET_THUMBNAIL_BASE_URI.buildUpon()
+                            .appendPath(wallpaperId)
+                            .appendQueryParameter(KEY_DESTINATION, destination.asString())
+                            .build(),
                         "r",
                         null,
                     )
@@ -313,7 +318,7 @@ class WallpaperClientImpl(
         return recentsContentProviderAvailable == true
     }
 
-    private fun WallpaperDestination.asString(): String {
+    fun WallpaperDestination.asString(): String {
         return when (this) {
             WallpaperDestination.BOTH -> SCREEN_ALL
             WallpaperDestination.HOME -> SCREEN_HOME
@@ -356,6 +361,8 @@ class WallpaperClientImpl(
         private const val KEY_ID = "id"
         /** Key for a parameter used to pass the screen to/from the content provider. */
         private const val KEY_SCREEN = "screen"
+        /** Key for a parameter used to pass the wallpaper destination to/from content provider. */
+        private const val KEY_DESTINATION = "destination"
         /** Key for a parameter used to pass the screen to/from the content provider. */
         private const val KEY_SET_WALLPAPER_ENTRY_POINT = "set_wallpaper_entry_point"
         private const val KEY_LAST_UPDATED = "last_updated"

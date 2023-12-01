@@ -16,16 +16,13 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
-import android.view.LayoutInflater
-import android.view.SurfaceView
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import com.android.wallpaper.R
 import com.android.wallpaper.dispatchers.MainDispatcher
-import com.android.wallpaper.model.LiveWallpaperInfo
 import com.android.wallpaper.picker.preview.ui.viewmodel.SmallPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import com.android.wallpaper.util.PreviewUtils
+import com.android.wallpaper.picker.preview.ui.viewmodel.WorkspacePreviewConfigViewModel
 import kotlinx.coroutines.CoroutineScope
 
 object SmallPreviewBinder {
@@ -36,36 +33,24 @@ object SmallPreviewBinder {
         smallPreviewConfig: SmallPreviewConfigViewModel,
         @MainDispatcher mainScope: CoroutineScope,
         viewLifecycleOwner: LifecycleOwner,
-        previewUtils: PreviewUtils,
-        previewDisplayId: Int? = null,
+        workspaceConfig: WorkspacePreviewConfigViewModel,
         navigate: (() -> Unit)? = null,
     ) {
         view.setOnClickListener {
-            viewModel.selectSmallPreviewConfig(smallPreviewConfig)
+            viewModel.selectedSmallPreviewConfig = smallPreviewConfig
+            viewModel.selectedWorkspacePreviewConfig = workspaceConfig
             navigate?.invoke()
         }
 
-        WorkspacePreviewBinder.bind(
-            view.requireViewById(R.id.workspace_surface),
-            previewUtils,
-            previewDisplayId,
-        )
+        WorkspacePreviewBinder.bind(view.requireViewById(R.id.workspace_surface), workspaceConfig)
 
-        val wallpaperSurface = view.requireViewById<SurfaceView>(R.id.wallpaper_surface)
         SmallWallpaperPreviewBinder.bind(
-            applicationContext,
-            wallpaperSurface,
-            viewModel,
-            smallPreviewConfig,
-            viewLifecycleOwner,
-            mainScope,
-            staticPreviewView =
-                if (checkNotNull(viewModel.editingWallpaper) is LiveWallpaperInfo) {
-                    null
-                } else {
-                    LayoutInflater.from(applicationContext)
-                        .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                },
+            surface = view.requireViewById(R.id.wallpaper_surface),
+            viewModel = viewModel,
+            screenOrientation = smallPreviewConfig.screenOrientation,
+            applicationContext = applicationContext,
+            mainScope = mainScope,
+            viewLifecycleOwner = viewLifecycleOwner,
         )
     }
 }
