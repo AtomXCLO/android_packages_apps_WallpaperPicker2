@@ -12,14 +12,10 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
-  ~
   -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
-    <com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
-        android:id="@+id/dual_preview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
-</FrameLayout>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <size
+        android:height="0dp"
+        android:width="@dimen/wallpaper_control_button_group_divider_space" />
+</shape>
