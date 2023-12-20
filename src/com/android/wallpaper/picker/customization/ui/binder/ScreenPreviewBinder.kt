@@ -371,11 +371,17 @@ object ScreenPreviewBinder {
 
                 launch {
                     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        var initialWorkspaceUpdate = true
                         viewModel.workspaceUpdateEvents()?.collect {
-                            if (initialWorkspaceUpdate) {
-                                initialWorkspaceUpdate = false
-                            }
+                            workspaceSurface.holder.removeCallback(previewSurfaceCallback)
+                            previewSurfaceCallback?.cleanUp()
+                            removeAndReadd(workspaceSurface)
+                            previewSurfaceCallback =
+                                WorkspaceSurfaceHolderCallback(
+                                    workspaceSurface,
+                                    viewModel.previewUtils,
+                                    viewModel.getInitialExtras(),
+                                )
+                            workspaceSurface.holder.addCallback(previewSurfaceCallback)
                         }
                     }
                 }
