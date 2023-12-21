@@ -27,8 +27,8 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.transition.TransitionInflater
 import com.android.wallpaper.R
-import com.android.wallpaper.dispatchers.MainDispatcher
 import com.android.wallpaper.picker.AppbarFragment
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.binder.CropWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.binder.FullWallpaperPreviewBinder
 import com.android.wallpaper.picker.preview.ui.binder.WorkspacePreviewBinder
@@ -51,8 +51,10 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        sharedElementEnterTransition =
-            TransitionInflater.from(appContext).inflateTransition(R.transition.shared_view)
+        if (ENABLE_ANIMATION) {
+            sharedElementEnterTransition =
+                TransitionInflater.from(appContext).inflateTransition(R.transition.shared_view)
+        }
     }
 
     override fun onCreateView(
@@ -103,5 +105,9 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
     override fun getToolbarTextColor(): Int {
         return ContextCompat.getColor(requireContext(), R.color.system_on_surface)
+    }
+
+    companion object {
+        const val ENABLE_ANIMATION = false
     }
 }

@@ -18,11 +18,11 @@ package com.android.wallpaper.model.wallpaper
 
 import android.app.WallpaperInfo
 
-/** Represents set of attributes that are specific to live wallpapers. */
-data class LiveWallpaperData(
+/** Represents set of attributes that are needed for a wallpaper that is downloadable. */
+data class DownloadableWallpaperData(
     val groupName: String,
     val systemWallpaperInfo: WallpaperInfo,
     val isTitleVisible: Boolean,
     val isApplied: Boolean,
-    val effectNames: String?
+    val effectNames: String?,
 )
