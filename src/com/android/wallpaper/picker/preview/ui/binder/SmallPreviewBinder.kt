@@ -20,10 +20,10 @@ import android.view.SurfaceView
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import com.android.wallpaper.R
-import com.android.wallpaper.dispatchers.MainDispatcher
 import com.android.wallpaper.model.wallpaper.FoldableDisplay
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
 import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import kotlinx.coroutines.CoroutineScope
 
@@ -44,7 +44,7 @@ object SmallPreviewBinder {
         val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
 
         view.setOnClickListener {
-            viewModel.onSmallPreviewClicked(screen, foldableDisplay)
+            viewModel.onSmallPreviewClicked(screen, orientation, foldableDisplay)
             navigate?.invoke(wallpaperSurface)
         }
 
