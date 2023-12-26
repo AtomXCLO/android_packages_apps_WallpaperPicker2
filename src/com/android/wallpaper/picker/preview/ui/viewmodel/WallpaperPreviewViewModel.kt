@@ -19,7 +19,6 @@ import androidx.lifecycle.ViewModel
 import com.android.wallpaper.model.wallpaper.FoldableDisplay
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
 import com.android.wallpaper.model.wallpaper.WallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.Companion.isDownloadableWallpaper
 import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
@@ -27,10 +26,13 @@ import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewIn
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.PreviewUtils
+import com.android.wallpaper.util.WallpaperConnection.WhichPreview
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -51,23 +53,38 @@ constructor(
     val smallerDisplaySize = displayUtils.getRealSize(displayUtils.getSmallerDisplay())
     val wallpaperDisplaySize = displayUtils.getRealSize(displayUtils.getWallpaperDisplay())
 
-    val wallpaper: Flow<WallpaperModel> = interactor.wallpaperModel
+    val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
+    private val _whichPreview = MutableStateFlow<WhichPreview?>(null)
+    private val whichPreview: Flow<WhichPreview> = _whichPreview.asStateFlow().filterNotNull()
+    fun setWhichPreview(whichPreview: WhichPreview) {
+        _whichPreview.value = whichPreview
+    }
 
     // This is only used for the full screen wallpaper preview.
     private val fullWallpaperPreviewConfigViewModel:
         MutableStateFlow<WallpaperPreviewConfigViewModel?> =
         MutableStateFlow(null)
 
+    // This is only used for the small screen wallpaper preview.
+    val smallWallpaper: Flow<Pair<WallpaperModel, WhichPreview>> =
+        combine(wallpaper.filterNotNull(), whichPreview) { wallpaper, whichPreview ->
+            Pair(wallpaper, whichPreview)
+        }
+
     // This is only used for the full screen wallpaper preview.
     val fullWallpaper: Flow<FullWallpaperPreviewViewModel> =
-        combine(wallpaper, fullWallpaperPreviewConfigViewModel.filterNotNull()) { wallpaper, config
-            ->
+        combine(
+            wallpaper.filterNotNull(),
+            fullWallpaperPreviewConfigViewModel.filterNotNull(),
+            whichPreview,
+        ) { wallpaper, config, whichPreview ->
             FullWallpaperPreviewViewModel(
                 wallpaper = wallpaper,
                 config = config,
                 allowUserCropping =
                     wallpaper is WallpaperModel.StaticWallpaperModel &&
-                        !wallpaper.isDownloadableWallpaper()
+                        !wallpaper.isDownloadableWallpaper(),
+                whichPreview = whichPreview,
             )
         }
 
@@ -101,7 +118,8 @@ constructor(
         }
 
     // If the wallpaper is a downloadable wallpaper, do not show the button
-    val isSetWallpaperButtonVisible: Flow<Boolean> = wallpaper.map { !it.isDownloadableWallpaper() }
+    val isSetWallpaperButtonVisible: Flow<Boolean> =
+        wallpaper.filterNotNull().map { !it.isDownloadableWallpaper() }
 
     fun getWorkspacePreviewConfig(
         screen: Screen,
@@ -145,6 +163,15 @@ constructor(
             getWorkspacePreviewConfig(screen, foldableDisplay)
     }
 
+    fun setDefaultWallpaperPreviewConfigViewModel() {
+        fullWallpaperPreviewConfigViewModel.value =
+            WallpaperPreviewConfigViewModel(
+                Screen.HOME_SCREEN,
+                wallpaperDisplaySize,
+                ScreenOrientation.PORTRAIT
+            )
+    }
+
     private fun getWallpaperPreviewConfig(
         screen: Screen,
         orientation: ScreenOrientation,
@@ -167,5 +194,12 @@ constructor(
             displaySize = displaySize,
             screenOrientation = orientation,
         )
+    }
+
+    companion object {
+        private fun WallpaperModel.isDownloadableWallpaper(): Boolean {
+            return this is WallpaperModel.StaticWallpaperModel &&
+                this.downloadableWallpaperData != null
+        }
     }
 }
