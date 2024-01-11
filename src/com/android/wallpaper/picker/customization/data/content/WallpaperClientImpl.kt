@@ -30,7 +30,7 @@ import android.net.Uri
 import android.os.Looper
 import android.util.Log
 import com.android.wallpaper.asset.BitmapUtils
-import com.android.wallpaper.model.StaticWallpaperPrefMetadata
+import com.android.wallpaper.model.StaticWallpaperMetadata
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
 import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
@@ -119,6 +119,7 @@ class WallpaperClientImpl(
         inputStream: InputStream?,
         bitmap: Bitmap,
         cropHints: Map<ScreenOrientation, Rect>,
+        onDone: () -> Unit
     ) {
         // TODO (b/309138446): Use the new multi-crop API from WallpaperManager
         val wallpaperManagerId =
@@ -142,7 +143,7 @@ class WallpaperClientImpl(
         // 2. Snapshot logging
         val bitmapHash = BitmapUtils.generateHashCode(bitmap)
         val metadata =
-            StaticWallpaperPrefMetadata(
+            StaticWallpaperMetadata(
                 wallpaperModel.commonWallpaperData.attributions,
                 wallpaperModel.commonWallpaperData.exploreActionUrl,
                 wallpaperModel.commonWallpaperData.id.collectionId,

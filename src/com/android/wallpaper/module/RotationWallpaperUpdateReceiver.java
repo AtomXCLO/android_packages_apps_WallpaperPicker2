@@ -20,8 +20,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 
+import com.android.wallpaper.util.DiskBasedLogger;
 import com.android.wallpaper.util.FileMover;
 
 import java.io.File;
@@ -45,6 +45,10 @@ public class RotationWallpaperUpdateReceiver extends BroadcastReceiver {
         if (intent.getAction() == null
                 || !(intent.getAction().equals(Intent.ACTION_MY_PACKAGE_REPLACED)
                 || intent.getAction().equals(Intent.ACTION_BOOT_COMPLETED))) {
+            DiskBasedLogger.e(
+                    TAG,
+                    "Unexpected action or Android version!",
+                    context);
             throw new IllegalStateException(
                     "Unexpected broadcast action or unsupported Android version");
         }
@@ -72,8 +76,11 @@ public class RotationWallpaperUpdateReceiver extends BroadcastReceiver {
             FileMover.moveFileBetweenContexts(context, ROTATING_WALLPAPER_FILE_PATH,
                     deviceProtectedContext, ROTATING_WALLPAPER_FILE_PATH);
         } catch (Exception ex) {
-            Log.e(TAG, "Failed to move rotating wallpaper file to device protected storage: "
-                            + ex.getMessage());
+            DiskBasedLogger.e(
+                    TAG,
+                    "Failed to move rotating wallpaper file to device protected storage: "
+                            + ex.getMessage(),
+                    context);
         }
     }
 
@@ -95,7 +102,7 @@ public class RotationWallpaperUpdateReceiver extends BroadcastReceiver {
             wallpaperFile.delete();
 
         } catch (Exception ex) {
-            Log.e(TAG, "Unable to set static wallpaper");
+            DiskBasedLogger.e(TAG, "Unable to set static wallpaper", appContext);
         }
     }
 }

@@ -124,6 +124,7 @@ class WallpaperRepository(
         inputStream: InputStream?,
         bitmap: Bitmap,
         cropHints: Map<ScreenOrientation, Rect>,
+        onDone: () -> Unit,
     ) {
         withContext(backgroundDispatcher) {
             client.setStaticWallpaper(
@@ -133,6 +134,7 @@ class WallpaperRepository(
                 inputStream,
                 bitmap,
                 cropHints,
+                onDone,
             )
         }
     }
