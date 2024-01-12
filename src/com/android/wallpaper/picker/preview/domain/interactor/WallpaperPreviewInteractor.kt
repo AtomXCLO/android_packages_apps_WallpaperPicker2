@@ -46,6 +46,7 @@ constructor(
         inputStream: InputStream?,
         bitmap: Bitmap,
         cropHints: Map<ScreenOrientation, Rect>,
+        onDone: () -> Unit,
     ) {
         wallpaperRepository.setStaticWallpaper(
             setWallpaperEntryPoint,
@@ -54,6 +55,7 @@ constructor(
             inputStream,
             bitmap,
             cropHints,
+            onDone,
         )
     }
 }
