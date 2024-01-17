@@ -68,8 +68,8 @@ class WallpaperRepository(
     ): String {
         val key =
             when (destination) {
-                WallpaperDestination.HOME -> wallpaperPreferences.homeWallpaperRecentsKey
-                WallpaperDestination.LOCK -> wallpaperPreferences.lockWallpaperRecentsKey
+                WallpaperDestination.HOME -> wallpaperPreferences.getHomeWallpaperRecentsKey()
+                WallpaperDestination.LOCK -> wallpaperPreferences.getLockWallpaperRecentsKey()
                 else -> error("Unsupported destination")
             }
         return key ?: previews?.firstOrNull()?.wallpaperId ?: DEFAULT_KEY
@@ -96,12 +96,16 @@ class WallpaperRepository(
             .flowOn(backgroundDispatcher)
     }
 
-    /** Returns a thumbnail for the wallpaper with the given ID. */
-    suspend fun loadThumbnail(wallpaperId: String, lastUpdatedTimestamp: Long): Bitmap? {
+    /** Returns a thumbnail for the wallpaper with the given ID and destination. */
+    suspend fun loadThumbnail(
+        wallpaperId: String,
+        lastUpdatedTimestamp: Long,
+        destination: WallpaperDestination
+    ): Bitmap? {
         val cacheKey = "$wallpaperId-$lastUpdatedTimestamp"
         return thumbnailCache[cacheKey]
             ?: withContext(backgroundDispatcher) {
-                val thumbnail = client.loadThumbnail(wallpaperId)
+                val thumbnail = client.loadThumbnail(wallpaperId, destination)
                 if (thumbnail != null) {
                     thumbnailCache.put(cacheKey, thumbnail)
                 }

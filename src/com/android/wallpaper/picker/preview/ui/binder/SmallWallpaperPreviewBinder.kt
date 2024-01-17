@@ -16,71 +16,80 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
-import android.view.SurfaceControlViewHost
+import android.view.LayoutInflater
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.view.View
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.android.wallpaper.R
-import com.android.wallpaper.dispatchers.MainDispatcher
+import com.android.wallpaper.model.wallpaper.ScreenOrientation
+import com.android.wallpaper.model.wallpaper.WallpaperModel
+import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.picker.di.modules.MainDispatcher
+import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil
+import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil.attachView
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
-/** Binds wallpaper [SurfaceView] for small preview. */
+/**
+ * Bind the [SurfaceView] with [WallpaperPreviewViewModel] for rendering static or live wallpaper
+ * preview, with regard to its underlying [WallpaperModel].
+ */
 object SmallWallpaperPreviewBinder {
+    /**
+     * @param onFullResImageViewCreated This callback is only used when the wallpaperModel is a
+     *   [WallpaperModel.StaticWallpaperModel]. [FullWallpaperPreviewBinder] needs the callback to
+     *   further delegate the touch events and set the state change listener.
+     */
     fun bind(
-        applicationContext: Context,
-        wallpaperSurface: SurfaceView,
+        surface: SurfaceView,
         viewModel: WallpaperPreviewViewModel,
-        viewLifecycleOwner: LifecycleOwner,
+        screen: Screen,
+        screenOrientation: ScreenOrientation,
+        applicationContext: Context,
         @MainDispatcher mainScope: CoroutineScope,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
-        isRtl: Boolean,
-        staticPreviewView: View? = null,
+        viewLifecycleOwner: LifecycleOwner,
     ) {
-        wallpaperSurface.setZOrderMediaOverlay(true)
-        wallpaperSurface.holder.addCallback(
-            object : SurfaceHolder.Callback {
+        var job: Job? = null
+        surface.setZOrderMediaOverlay(true)
+        surface.holder.addCallback(
+            object : SurfaceViewUtil.SurfaceCallback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
-                    staticPreviewView?.let {
-                        val host =
-                            SurfaceControlViewHost(
-                                wallpaperSurface.context,
-                                wallpaperSurface.display,
-                                wallpaperSurface.hostToken,
-                            )
-                        if (it.parent == null) {
-                            host.setView(
-                                it,
-                                wallpaperSurface.width,
-                                wallpaperSurface.height,
-                            )
-                            wallpaperSurface.setChildSurfacePackage(
-                                checkNotNull(host.surfacePackage)
-                            )
+                    job =
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            viewModel.wallpaper.collect { wallpaper ->
+                                if (wallpaper is WallpaperModel.LiveWallpaperModel) {
+                                    WallpaperConnectionUtils.connect(
+                                        applicationContext,
+                                        mainScope,
+                                        wallpaper.liveWallpaperData.systemWallpaperInfo,
+                                        screen.toFlag(),
+                                        surface,
+                                    )
+                                } else if (wallpaper is WallpaperModel.StaticWallpaperModel) {
+                                    val staticPreviewView =
+                                        LayoutInflater.from(applicationContext)
+                                            .inflate(R.layout.fullscreen_wallpaper_preview, null)
+                                    surface.attachView(staticPreviewView)
+                                    // Bind static wallpaper
+                                    StaticWallpaperPreviewBinder.bind(
+                                        staticPreviewView.requireViewById(R.id.low_res_image),
+                                        staticPreviewView.requireViewById(R.id.full_res_image),
+                                        viewModel.staticWallpaperPreviewViewModel,
+                                        screenOrientation,
+                                        viewLifecycleOwner,
+                                    )
+                                }
+                            }
                         }
-                    }
-                    WallpaperPreviewBinder.bind(
-                        applicationContext,
-                        isSingleDisplayOrUnfoldedHorizontalHinge,
-                        isRtl,
-                        mainScope,
-                        viewLifecycleOwner,
-                        viewModel,
-                        wallpaperSurface,
-                        staticPreviewView?.requireViewById(R.id.full_res_image),
-                        staticPreviewView?.requireViewById(R.id.low_res_image),
-                    )
                 }
 
-                override fun surfaceChanged(
-                    holder: SurfaceHolder,
-                    format: Int,
-                    width: Int,
-                    height: Int
-                ) {}
-
-                override fun surfaceDestroyed(holder: SurfaceHolder) {}
+                override fun surfaceDestroyed(holder: SurfaceHolder) {
+                    job?.cancel()
+                }
             }
         )
         // TODO (b/300979155): Clean up surface when no longer needed, e.g. onDestroyed

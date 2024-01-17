@@ -16,68 +16,52 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
-import android.graphics.Point
-import android.view.LayoutInflater
 import android.view.SurfaceView
 import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import com.android.wallpaper.R
-import com.android.wallpaper.dispatchers.MainDispatcher
-import com.android.wallpaper.model.LiveWallpaperInfo
-import com.android.wallpaper.module.CustomizationSections
-import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewTransitionViewModel
+import com.android.wallpaper.model.wallpaper.FoldableDisplay
+import com.android.wallpaper.model.wallpaper.ScreenOrientation
+import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import com.android.wallpaper.util.PreviewUtils
 import kotlinx.coroutines.CoroutineScope
 
 object SmallPreviewBinder {
-
+    /** @param foldableDisplay Only used for foldable devices; otherwise, set to null. */
     fun bind(
         applicationContext: Context,
         view: View,
         viewModel: WallpaperPreviewViewModel,
+        screen: Screen,
+        orientation: ScreenOrientation,
+        foldableDisplay: FoldableDisplay?,
         @MainDispatcher mainScope: CoroutineScope,
         viewLifecycleOwner: LifecycleOwner,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
-        isRtl: Boolean,
-        previewDisplaySize: Point,
-        previewUtils: PreviewUtils,
-        previewDisplayId: Int? = null,
-        navigate: (() -> Unit)? = null,
+        navigate: ((View) -> Unit)? = null,
     ) {
+        val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
+        val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
+
         view.setOnClickListener {
-            // TODO(b/291761856): update preview transition view model from
-            //                    [SmallPreviewFragment].
-            viewModel.previewTransitionViewModel =
-                PreviewTransitionViewModel(
-                    previewTab = CustomizationSections.Screen.HOME_SCREEN,
-                    targetDisplaySize = previewDisplaySize,
-                )
-            navigate?.invoke()
+            viewModel.onSmallPreviewClicked(screen, orientation, foldableDisplay)
+            navigate?.invoke(wallpaperSurface)
         }
 
+        val config = viewModel.getWorkspacePreviewConfig(screen, foldableDisplay)
         WorkspacePreviewBinder.bind(
-            view.requireViewById<SurfaceView>(R.id.workspace_surface),
-            previewUtils,
-            previewDisplayId,
+            workspaceSurface,
+            config,
         )
 
-        val wallpaperSurface = view.requireViewById<SurfaceView>(R.id.wallpaper_surface)
         SmallWallpaperPreviewBinder.bind(
-            applicationContext,
-            wallpaperSurface,
-            viewModel,
-            viewLifecycleOwner,
-            mainScope,
-            isSingleDisplayOrUnfoldedHorizontalHinge,
-            isRtl,
-            staticPreviewView =
-                if (checkNotNull(viewModel.editingWallpaper) is LiveWallpaperInfo) {
-                    null
-                } else {
-                    LayoutInflater.from(applicationContext)
-                        .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                },
+            surface = wallpaperSurface,
+            viewModel = viewModel,
+            screen = screen,
+            screenOrientation = orientation,
+            applicationContext = applicationContext,
+            mainScope = mainScope,
+            viewLifecycleOwner = viewLifecycleOwner,
         )
     }
 }

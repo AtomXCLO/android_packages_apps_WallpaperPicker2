@@ -17,6 +17,9 @@ package com.android.wallpaper.picker.preview.ui.binder
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.graphics.Bitmap
+import android.graphics.Point
+import android.graphics.Rect
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.view.View
@@ -27,8 +30,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.model.wallpaper.ScreenOrientation
 import com.android.wallpaper.picker.preview.ui.util.FullResImageViewUtil
-import com.android.wallpaper.picker.preview.ui.viewmodel.FullResWallpaperViewModel
+import com.android.wallpaper.picker.preview.ui.util.FullResImageViewUtil.getCropRect
 import com.android.wallpaper.picker.preview.ui.viewmodel.StaticWallpaperPreviewViewModel
 import com.android.wallpaper.util.WallpaperSurfaceCallback.LOW_RES_BITMAP_BLUR_RADIUS
 import com.davemorrissey.labs.subscaleview.ImageSource
@@ -41,12 +45,11 @@ object StaticWallpaperPreviewBinder {
     private const val CROSS_FADE_DURATION: Long = 200
 
     fun bind(
-        fullResImageView: SubsamplingScaleImageView,
         lowResImageView: ImageView,
+        fullResImageView: SubsamplingScaleImageView,
         viewModel: StaticWallpaperPreviewViewModel,
+        screenOrientation: ScreenOrientation,
         viewLifecycleOwner: LifecycleOwner,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
-        isRtl: Boolean,
     ) {
         lowResImageView.initLowResImageView()
         fullResImageView.initFullResImageView()
@@ -57,11 +60,17 @@ object StaticWallpaperPreviewBinder {
 
                 launch {
                     viewModel.subsamplingScaleImageViewModel.collect {
+                        val cropHint = it.cropHints?.get(screenOrientation)
                         fullResImageView.setFullResImage(
-                            it,
-                            isSingleDisplayOrUnfoldedHorizontalHinge,
-                            isRtl,
+                            it.rawWallpaperBitmap,
+                            it.rawWallpaperSize,
+                            cropHint,
                         )
+
+                        // Both small and full previews change fullPreviewCrop but it should track
+                        // only full preview crop, initial value should align with existing crop
+                        // otherwise it's a new preview selection and use current visible crop
+                        viewModel.fullPreviewCrop = cropHint ?: fullResImageView.getCropRect()
                         crossFadeInFullResImageView(lowResImageView, fullResImageView)
                     }
                 }
@@ -85,26 +94,23 @@ object StaticWallpaperPreviewBinder {
     }
 
     private fun SubsamplingScaleImageView.setFullResImage(
-        viewModel: FullResWallpaperViewModel,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
-        isRtl: Boolean,
+        rawWallpaperBitmap: Bitmap,
+        rawWallpaperSize: Point,
+        cropHint: Rect?,
     ) {
+        // Set the full res image
+        setImage(ImageSource.bitmap(rawWallpaperBitmap))
         // Calculate the scale and the center point for the full res image
         FullResImageViewUtil.getScaleAndCenter(
-                measuredWidth,
-                measuredHeight,
-                viewModel.offsetToStart,
-                viewModel.rawWallpaperSize,
-                isSingleDisplayOrUnfoldedHorizontalHinge,
-                isRtl,
+                Point(measuredWidth, measuredHeight),
+                rawWallpaperSize,
+                cropHint,
             )
-            .also { scaleAndCenter ->
+            .let { scaleAndCenter ->
                 minScale = scaleAndCenter.minScale
                 maxScale = scaleAndCenter.maxScale
                 setScaleAndCenter(scaleAndCenter.defaultScale, scaleAndCenter.center)
             }
-        // Set the full res image
-        setImage(ImageSource.bitmap(viewModel.rawWallpaperBitmap))
     }
 
     private fun crossFadeInFullResImageView(lowResImageView: ImageView, fullResImageView: View) {

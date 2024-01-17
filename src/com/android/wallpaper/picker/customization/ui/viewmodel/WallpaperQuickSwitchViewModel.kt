@@ -95,7 +95,8 @@ constructor(
                         thumbnail = {
                             interactor.loadThumbnail(
                                 wallpaperId = preview.wallpaperId,
-                                lastUpdatedTimestamp = preview.lastUpdated
+                                lastUpdatedTimestamp = preview.lastUpdated,
+                                destination = destination
                             )
                         },
                         isLarge =
@@ -110,10 +111,7 @@ constructor(
                                 // click.
                                 (isSelected && !isSomethingBecomingSelected) || isBecomingSelected
                             },
-                        // We show the progress indicator if the option is in the process of
-                        // becoming the selected one following user click.
-                        isProgressIndicatorVisible = isBecomingSelectedFlow,
-                        isSelectionBorderVisible =
+                        isSelectionIndicatorVisible =
                             combine(
                                 isSelectedFlow,
                                 isBecomingSelectedFlow,
@@ -124,17 +122,7 @@ constructor(
                                 // the selected one following user click.
                                 (isSelected && !isSomethingBecomingSelected) || isBeingSelected
                             },
-                        isSelectionIconVisible =
-                            combine(
-                                isSelectedFlow,
-                                isSomethingBecomingSelectedFlow,
-                            ) { isSelected, isSomethingBecomingSelected ->
-                                // The selection icon is shown for the option that is
-                                // currently selected but only if nothing else is becoming
-                                // selected. If anything is being selected following user
-                                // click, the selection icon is not shown on any option.
-                                isSelected && !isSomethingBecomingSelected
-                            },
+                        title = preview.title,
                         onSelected =
                             combine(
                                     isSelectedFlow,

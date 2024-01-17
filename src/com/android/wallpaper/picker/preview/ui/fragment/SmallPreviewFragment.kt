@@ -21,20 +21,22 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.FragmentNavigatorExtras
 import androidx.navigation.fragment.findNavController
 import com.android.wallpaper.R
-import com.android.wallpaper.dispatchers.MainDispatcher
+import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.AppbarFragment
-import com.android.wallpaper.picker.preview.di.modules.preview.utils.PreviewUtilsModule
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.binder.DualPreviewSelectorBinder
+import com.android.wallpaper.picker.preview.ui.binder.PreviewActionsBinder
 import com.android.wallpaper.picker.preview.ui.binder.PreviewSelectorBinder
+import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.DualPreviewViewPager
 import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.views.TabsPagerContainer
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
-import com.android.wallpaper.util.PreviewUtils
-import com.android.wallpaper.util.RtlUtils
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -49,25 +51,34 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
 
     @Inject @ApplicationContext lateinit var appContext: Context
     @Inject lateinit var displayUtils: DisplayUtils
-    @PreviewUtilsModule.HomeScreenPreviewUtils @Inject lateinit var homePreviewUtils: PreviewUtils
-    @PreviewUtilsModule.LockScreenPreviewUtils @Inject lateinit var lockPreviewUtils: PreviewUtils
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
+    @Inject lateinit var logger: UserEventLogger
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle?
+        savedInstanceState: Bundle?,
     ): View {
         val view =
-            if (displayUtils.hasMultiInternalDisplays()) {
-                inflater.inflate(R.layout.fragment_small_preview_for_two_screens, container, false)
-            } else {
-                inflater.inflate(R.layout.fragment_small_preview_handheld, container, false)
-            }
+            inflater.inflate(
+                if (displayUtils.hasMultiInternalDisplays())
+                    R.layout.fragment_small_preview_foldable
+                else R.layout.fragment_small_preview_handheld,
+                container,
+                false,
+            )
         setUpToolbar(view)
         bindScreenPreview(view)
+
+        SetWallpaperButtonBinder.bind(
+            button = view.requireViewById(R.id.button_set_wallpaper),
+            viewModel = wallpaperPreviewViewModel,
+            lifecycleOwner = viewLifecycleOwner
+        ) {
+            findNavController().navigate(R.id.action_smallPreviewFragment_to_setWallpaperDialog)
+        }
 
         return view
     }
@@ -85,11 +96,15 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
     }
 
     private fun bindScreenPreview(view: View) {
-        val activity = activity ?: return
-        val isSingleDisplayOrUnfoldedHorizontalHinge =
-            displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(activity)
-        val isRtl = RtlUtils.isRtl(appContext)
-
+        PreviewActionsBinder.bind(
+            actionGroup = view.requireViewById(R.id.action_button_group),
+            floatingSheet = view.requireViewById(R.id.floating_sheet),
+            viewModel = wallpaperPreviewViewModel.previewActionsViewModel,
+            lifecycleOwner = viewLifecycleOwner,
+            logger = logger,
+        ) {
+            activity?.finish()
+        }
         if (displayUtils.hasMultiInternalDisplays()) {
             val dualPreviewView: DualPreviewViewPager =
                 view.requireViewById(R.id.dual_preview_pager)
@@ -99,17 +114,20 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 tabPager.getViewPager(),
                 dualPreviewView,
                 wallpaperPreviewViewModel,
-                homePreviewUtils,
-                lockPreviewUtils,
                 appContext,
-                isSingleDisplayOrUnfoldedHorizontalHinge,
                 viewLifecycleOwner,
-                isRtl,
                 mainScope,
-                displayUtils,
-            ) {
+            ) { sharedElement ->
+                ViewCompat.setTransitionName(sharedElement, SMALL_PREVIEW_SHARED_ELEMENT_ID)
+                val extras =
+                    FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 findNavController()
-                    .navigate(R.id.action_smallPreviewFragment_to_fullPreviewFragment)
+                    .navigate(
+                        resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                        args = null,
+                        navOptions = null,
+                        navigatorExtras = extras
+                    )
             }
         } else {
             val tabPager: TabsPagerContainer = view.requireViewById(R.id.pager_container)
@@ -121,16 +139,25 @@ class SmallPreviewFragment : Hilt_SmallPreviewFragment() {
                 // TODO: pass correct view models for the view pager
                 wallpaperPreviewViewModel,
                 appContext,
-                isSingleDisplayOrUnfoldedHorizontalHinge,
                 viewLifecycleOwner,
-                isRtl,
                 mainScope,
-                homePreviewUtils,
-                lockPreviewUtils,
-            ) {
+            ) { sharedElement ->
+                ViewCompat.setTransitionName(sharedElement, SMALL_PREVIEW_SHARED_ELEMENT_ID)
+                val extras =
+                    FragmentNavigatorExtras(sharedElement to FULL_PREVIEW_SHARED_ELEMENT_ID)
                 findNavController()
-                    .navigate(R.id.action_smallPreviewFragment_to_fullPreviewFragment)
+                    .navigate(
+                        resId = R.id.action_smallPreviewFragment_to_fullPreviewFragment,
+                        args = null,
+                        navOptions = null,
+                        navigatorExtras = extras
+                    )
             }
         }
+    }
+
+    companion object {
+        const val SMALL_PREVIEW_SHARED_ELEMENT_ID = "small_preview_shared_element"
+        const val FULL_PREVIEW_SHARED_ELEMENT_ID = "full_preview_shared_element"
     }
 }

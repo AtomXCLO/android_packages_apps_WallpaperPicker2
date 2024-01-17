@@ -15,24 +15,27 @@
  */
 package com.android.wallpaper.picker.preview.ui.fragment
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import androidx.transition.TransitionInflater
 import com.android.wallpaper.R
-import com.android.wallpaper.dispatchers.MainDispatcher
-import com.android.wallpaper.model.LiveWallpaperInfo
 import com.android.wallpaper.picker.AppbarFragment
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.binder.CropWallpaperButtonBinder
 import com.android.wallpaper.picker.preview.ui.binder.FullWallpaperPreviewBinder
-import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewSurfaceViewModel
+import com.android.wallpaper.picker.preview.ui.binder.WorkspacePreviewBinder
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
-import com.android.wallpaper.util.RtlUtils
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 
@@ -40,10 +43,19 @@ import kotlinx.coroutines.CoroutineScope
 @AndroidEntryPoint(AppbarFragment::class)
 class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
+    @Inject @ApplicationContext lateinit var appContext: Context
     @Inject lateinit var displayUtils: DisplayUtils
     @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (ENABLE_ANIMATION) {
+            sharedElementEnterTransition =
+                TransitionInflater.from(appContext).inflateTransition(R.transition.shared_view)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,38 +63,33 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_full_preview, container, false)
-
         setUpToolbar(view)
 
-        val appContext = requireContext().applicationContext
+        val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
+        ViewCompat.setTransitionName(wallpaperSurface, "full_preview_shared_element")
+
         FullWallpaperPreviewBinder.bind(
-            appContext,
-            view.requireViewById(R.id.wallpaper_surface),
-            view.requireViewById(R.id.touch_forwarding_layout),
-            FullPreviewSurfaceViewModel(
-                previewTransitionViewModel =
-                    checkNotNull(wallpaperPreviewViewModel.previewTransitionViewModel),
-                currentDisplaySize = displayUtils.getRealSize(checkNotNull(view.context.display))
-            ),
-            wallpaperPreviewViewModel,
-            viewLifecycleOwner,
-            mainScope,
-            displayUtils.isSingleDisplayOrUnfoldedHorizontalHinge(requireActivity()),
-            RtlUtils.isRtl(requireContext().applicationContext),
-            staticPreviewView =
-                if (checkNotNull(wallpaperPreviewViewModel.editingWallpaper) is LiveWallpaperInfo) {
-                    null
-                } else {
-                    LayoutInflater.from(appContext)
-                        .inflate(R.layout.fullscreen_wallpaper_preview, null)
-                },
+            applicationContext = appContext,
+            view = view,
+            viewModel = wallpaperPreviewViewModel,
+            displayUtils = displayUtils,
+            lifecycleOwner = viewLifecycleOwner,
+            mainScope = mainScope,
         )
 
         CropWallpaperButtonBinder.bind(
-            view.requireViewById(R.id.crop_wallpaper_button),
+            button = view.requireViewById(R.id.crop_wallpaper_button),
+            viewModel = wallpaperPreviewViewModel,
+            lifecycleOwner = viewLifecycleOwner,
         ) {
-            findNavController().navigate(R.id.action_fullPreviewFragment_to_smallPreviewFragment)
+            findNavController().popBackStack()
         }
+
+        WorkspacePreviewBinder.bindFullWorkspacePreview(
+            surface = view.requireViewById(R.id.workspace_surface),
+            viewModel = wallpaperPreviewViewModel,
+            lifecycleOwner = viewLifecycleOwner,
+        )
 
         return view
     }
@@ -98,5 +105,9 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
 
     override fun getToolbarTextColor(): Int {
         return ContextCompat.getColor(requireContext(), R.color.system_on_surface)
+    }
+
+    companion object {
+        const val ENABLE_ANIMATION = false
     }
 }

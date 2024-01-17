@@ -17,50 +17,49 @@ package com.android.wallpaper.picker.preview.ui.util
 
 import android.graphics.Point
 import android.graphics.PointF
+import android.graphics.Rect
 import com.android.wallpaper.util.WallpaperCropUtils
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 
 object FullResImageViewUtil {
 
     private const val DEFAULT_WALLPAPER_MAX_ZOOM = 8f
+
     fun getScaleAndCenter(
-        viewWidth: Int,
-        viewHeight: Int,
-        offsetToStart: Boolean,
+        viewSize: Point,
         rawWallpaperSize: Point,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
-        isRtl: Boolean,
+        cropRect: Rect?,
     ): ScaleAndCenter {
         // Determine minimum zoom to fit maximum visible area of wallpaper on crop surface.
-        val crop = Point(viewWidth, viewHeight)
-        val visibleRawWallpaperRect =
-            WallpaperCropUtils.calculateVisibleRect(rawWallpaperSize, crop)
-        if (offsetToStart && isSingleDisplayOrUnfoldedHorizontalHinge) {
-            if (isRtl) {
-                visibleRawWallpaperRect.offsetTo(
-                    rawWallpaperSize.x - visibleRawWallpaperRect.width(),
-                    visibleRawWallpaperRect.top,
-                )
-            } else {
-                visibleRawWallpaperRect.offsetTo(/* newLeft= */ 0, visibleRawWallpaperRect.top)
-            }
-        }
+        // defaultRawWallpaperRect represents a brand new wallpaper preview with no crop hints.
+        val defaultRawWallpaperRect =
+            WallpaperCropUtils.calculateVisibleRect(rawWallpaperSize, viewSize)
+        val visibleRawWallpaperRect = cropRect ?: defaultRawWallpaperRect
         val centerPosition =
             PointF(
                 visibleRawWallpaperRect.centerX().toFloat(),
                 visibleRawWallpaperRect.centerY().toFloat()
             )
-        val visibleRawWallpaperSize =
-            Point(visibleRawWallpaperRect.width(), visibleRawWallpaperRect.height())
         val defaultWallpaperZoom =
-            WallpaperCropUtils.calculateMinZoom(visibleRawWallpaperSize, crop)
+            WallpaperCropUtils.calculateMinZoom(
+                Point(defaultRawWallpaperRect.width(), defaultRawWallpaperRect.height()),
+                viewSize
+            )
+        val visibleWallpaperZoom =
+            WallpaperCropUtils.calculateMinZoom(
+                Point(visibleRawWallpaperRect.width(), visibleRawWallpaperRect.height()),
+                viewSize
+            )
 
         return ScaleAndCenter(
             defaultWallpaperZoom,
             defaultWallpaperZoom.coerceAtLeast(DEFAULT_WALLPAPER_MAX_ZOOM),
-            defaultWallpaperZoom,
+            visibleWallpaperZoom,
             centerPosition,
         )
     }
+
+    fun SubsamplingScaleImageView.getCropRect() = Rect().apply { visibleFileRect(this) }
 
     data class ScaleAndCenter(
         val minScale: Float,

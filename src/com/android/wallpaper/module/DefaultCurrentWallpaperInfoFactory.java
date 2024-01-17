@@ -21,6 +21,7 @@ import android.content.Context;
 
 import androidx.annotation.Nullable;
 
+import com.android.wallpaper.config.BaseFlags;
 import com.android.wallpaper.model.CurrentWallpaperInfo;
 import com.android.wallpaper.model.LiveWallpaperMetadata;
 import com.android.wallpaper.model.WallpaperInfo;
@@ -68,6 +69,9 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
 
         mWallpaperRefresher.refresh(
                 (homeWallpaperMetadata, lockWallpaperMetadata, presentationMode) -> {
+                    BaseFlags flags = InjectorProvider.getInjector().getFlags();
+                    final boolean multiCropEnabled =
+                            flags.isMultiCropEnabled() && flags.isMultiCropPreviewUiEnabled();
                     WallpaperInfo homeWallpaper;
                     if (homeWallpaperMetadata instanceof LiveWallpaperMetadata) {
                         homeWallpaper = mLiveWallpaperInfoFactory.getLiveWallpaperInfo(
@@ -76,10 +80,12 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
                         homeWallpaper = new CurrentWallpaperInfo(
                                 homeWallpaperMetadata.getAttributions(),
                                 homeWallpaperMetadata.getActionUrl(),
-                                homeWallpaperMetadata.getActionLabelRes(),
-                                homeWallpaperMetadata.getActionIconRes(),
                                 homeWallpaperMetadata.getCollectionId(),
                                 WallpaperManager.FLAG_SYSTEM);
+                        if (multiCropEnabled) {
+                            homeWallpaper.setWallpaperCropHints(
+                                    homeWallpaperMetadata.getWallpaperCropHints());
+                        }
                     }
 
                     WallpaperInfo lockWallpaper = null;
@@ -93,10 +99,13 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
                             lockWallpaper = new CurrentWallpaperInfo(
                                     lockWallpaperMetadata.getAttributions(),
                                     lockWallpaperMetadata.getActionUrl(),
-                                    lockWallpaperMetadata.getActionLabelRes(),
-                                    lockWallpaperMetadata.getActionIconRes(),
                                     lockWallpaperMetadata.getCollectionId(),
                                     WallpaperManager.FLAG_LOCK);
+
+                            if (multiCropEnabled) {
+                                lockWallpaper.setWallpaperCropHints(
+                                        lockWallpaperMetadata.getWallpaperCropHints());
+                            }
                         }
                     }
 

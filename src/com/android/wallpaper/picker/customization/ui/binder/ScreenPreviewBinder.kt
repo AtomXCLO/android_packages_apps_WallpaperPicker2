@@ -98,7 +98,6 @@ object ScreenPreviewBinder {
         offsetToStart: Boolean,
         dimWallpaper: Boolean = false,
         onWallpaperPreviewDirty: () -> Unit,
-        onWorkspacePreviewDirty: () -> Unit = {},
         animationStateViewModel: AnimationStateViewModel? = null,
         isWallpaperAlwaysVisible: Boolean = true,
         mirrorSurface: SurfaceView? = null,
@@ -372,13 +371,17 @@ object ScreenPreviewBinder {
 
                 launch {
                     lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        var initialWorkspaceUpdate = true
                         viewModel.workspaceUpdateEvents()?.collect {
-                            if (initialWorkspaceUpdate) {
-                                initialWorkspaceUpdate = false
-                            } else {
-                                onWorkspacePreviewDirty()
-                            }
+                            workspaceSurface.holder.removeCallback(previewSurfaceCallback)
+                            previewSurfaceCallback?.cleanUp()
+                            removeAndReadd(workspaceSurface)
+                            previewSurfaceCallback =
+                                WorkspaceSurfaceHolderCallback(
+                                    workspaceSurface,
+                                    viewModel.previewUtils,
+                                    viewModel.getInitialExtras(),
+                                )
+                            workspaceSurface.holder.addCallback(previewSurfaceCallback)
                         }
                     }
                 }
@@ -560,7 +563,7 @@ object ScreenPreviewBinder {
             wallpaperSurface,
             mirrorSurface,
             screen.toFlag(),
-            WallpaperConnection.WHICH_PREVIEW.PREVIEW_CURRENT
+            WallpaperConnection.WhichPreview.PREVIEW_CURRENT
         )
 
     private fun removeAndReadd(view: View) {

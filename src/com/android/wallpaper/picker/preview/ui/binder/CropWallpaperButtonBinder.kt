@@ -16,13 +16,31 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.widget.Button
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import kotlinx.coroutines.launch
 
 object CropWallpaperButtonBinder {
     fun bind(
         button: Button,
-        onClicked: () -> Unit,
+        viewModel: WallpaperPreviewViewModel,
+        lifecycleOwner: LifecycleOwner,
+        navigate: () -> Unit,
     ) {
-        // TODO(b/303317694): go back to previous small preview tab
-        button.setOnClickListener { onClicked.invoke() }
+        lifecycleOwner.lifecycleScope.launch {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.onCropButtonClick.collect { onCropButtonClick ->
+                        button.setOnClickListener {
+                            onCropButtonClick?.invoke()
+                            navigate.invoke()
+                        }
+                    }
+                }
+            }
+        }
     }
 }

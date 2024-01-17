@@ -17,11 +17,11 @@ package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
 import android.graphics.Point
+import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import androidx.viewpager.widget.ViewPager
 import androidx.viewpager2.widget.ViewPager2
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import com.android.wallpaper.util.PreviewUtils
 import kotlinx.coroutines.CoroutineScope
 
 /** Binds and synchronizes the tab and preview view pagers. */
@@ -33,13 +33,9 @@ object PreviewSelectorBinder {
         previewDisplaySize: Point,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
-        isSingleDisplayOrUnfoldedHorizontalHinge: Boolean,
         viewLifecycleOwner: LifecycleOwner,
-        isRtl: Boolean,
         mainScope: CoroutineScope,
-        homePreviewUtils: PreviewUtils,
-        lockPreviewUtils: PreviewUtils,
-        navigate: (() -> Unit)? = null,
+        navigate: (View) -> Unit,
     ) {
         // set up tabs view pager
         TabPagerBinder.bind(tabsViewPager)
@@ -47,15 +43,11 @@ object PreviewSelectorBinder {
         // set up previews view pager
         PreviewPagerBinder.bind(
             applicationContext,
-            isSingleDisplayOrUnfoldedHorizontalHinge,
             viewLifecycleOwner,
-            isRtl,
             mainScope,
             previewsViewPager,
             wallpaperPreviewViewModel,
             previewDisplaySize,
-            homePreviewUtils,
-            lockPreviewUtils,
             navigate,
         )
 
