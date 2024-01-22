@@ -16,8 +16,7 @@
 
 package com.android.wallpaper.picker.preview.ui.binder
 
-import android.widget.Button
-import androidx.core.view.isVisible
+import android.app.ProgressDialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -25,36 +24,19 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import kotlinx.coroutines.launch
 
-/** Binds the set wallpaper button on small preview. */
-object SetWallpaperButtonBinder {
+/** Binds the set wallpaper progress dialog. */
+object SetWallpaperProgressDialogBinder {
 
     fun bind(
-        button: Button,
+        dialog: ProgressDialog,
         viewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
-        navigate: () -> Unit,
     ) {
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.isSetWallpaperButtonVisible.collect { button.isVisible = it } }
-
                 launch {
-                    viewModel.onSetWallpaperButtonClicked.collect { onClicked ->
-                        button.setOnClickListener(
-                            if (onClicked != null) {
-                                { onClicked.invoke() }
-                            } else {
-                                null
-                            }
-                        )
-                    }
-                }
-
-                launch {
-                    viewModel.setWallpaperDialog.collect {
-                        if (it != null) {
-                            navigate.invoke()
-                        }
+                    viewModel.isSetWallpaperProgressBarVisible.collect {
+                        if (it) dialog.show() else dialog.hide()
                     }
                 }
             }
