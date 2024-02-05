@@ -20,12 +20,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.wallpaper.model.wallpaper.FoldableDisplay
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
+import com.android.wallpaper.picker.data.WallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
@@ -62,6 +62,13 @@ constructor(
 
     val smallerDisplaySize = displayUtils.getRealSize(displayUtils.getSmallerDisplay())
     val wallpaperDisplaySize = displayUtils.getRealSize(displayUtils.getWallpaperDisplay())
+
+    // TODO (b/303318205): cache value in wallpaper preferences
+    private val _showTooltip: MutableStateFlow<Boolean> = MutableStateFlow(true)
+    val showTooltip: StateFlow<Boolean> = _showTooltip.asStateFlow()
+    fun setShowTooltip(showTooltip: Boolean) {
+        _showTooltip.value = showTooltip
+    }
 
     val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
     private val _whichPreview = MutableStateFlow<WhichPreview?>(null)

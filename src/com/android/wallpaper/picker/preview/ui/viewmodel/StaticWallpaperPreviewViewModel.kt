@@ -25,9 +25,9 @@ import android.graphics.Rect
 import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.asset.StreamableAsset
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
@@ -62,7 +62,7 @@ constructor(
 
     private val cropHints: MutableStateFlow<Map<ScreenOrientation, Rect>?> = MutableStateFlow(null)
 
-    private val staticWallpaperModel: Flow<StaticWallpaperModel> =
+    val staticWallpaperModel: Flow<StaticWallpaperModel> =
         interactor.wallpaperModel.map { it as? StaticWallpaperModel }.filterNotNull()
     val lowResBitmap: Flow<Bitmap> =
         staticWallpaperModel
@@ -96,14 +96,30 @@ constructor(
             .flowOn(bgDispatcher)
     val subsamplingScaleImageViewModel: Flow<FullResWallpaperViewModel> =
         fullResWallpaperViewModel.filterNotNull()
-    val wallpaperColors: Flow<WallpaperColorsModel> =
+    // TODO (b/315856338): cache wallpaper colors in preferences
+    private val storedWallpaperColors: Flow<WallpaperColors?> =
         staticWallpaperModel
-            .map {
-                WallpaperColorsModel.Loaded(
-                    wallpaperPreferences.getWallpaperColors(it.commonWallpaperData.id.uniqueId)
-                )
-            }
+            .map { wallpaperPreferences.getWallpaperColors(it.commonWallpaperData.id.uniqueId) }
             .distinctUntilChanged()
+    val wallpaperColors: Flow<WallpaperColorsModel> =
+        combine(storedWallpaperColors, subsamplingScaleImageViewModel) {
+            storedColors,
+            wallpaperViewModel ->
+            WallpaperColorsModel.Loaded(
+                if (wallpaperViewModel.cropHints == null) {
+                    storedColors
+                        ?: interactor.getWallpaperColors(
+                            wallpaperViewModel.rawWallpaperBitmap,
+                            null
+                        )
+                } else {
+                    interactor.getWallpaperColors(
+                        wallpaperViewModel.rawWallpaperBitmap,
+                        wallpaperViewModel.cropHints
+                    )
+                }
+            )
+        }
 
     fun updateCropHints(cropHints: Map<ScreenOrientation, Rect>) {
         this.cropHints.value = this.cropHints.value?.plus(cropHints) ?: cropHints
@@ -121,7 +137,7 @@ constructor(
     private suspend fun Asset.decodeBitmap(dimensions: Point): Bitmap? =
         suspendCancellableCoroutine { k: CancellableContinuation<Bitmap?> ->
             val callback = Asset.BitmapReceiver { k.resumeWith(Result.success(it)) }
-            decodeBitmap(dimensions.x, dimensions.y, false, callback)
+            decodeBitmap(dimensions.x, dimensions.y, /* hardwareBitmapAllowed= */ false, callback)
         }
 
     private suspend fun Asset.getStream(): InputStream? =
