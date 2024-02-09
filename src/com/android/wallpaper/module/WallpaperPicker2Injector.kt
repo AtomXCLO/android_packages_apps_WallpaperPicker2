@@ -24,6 +24,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleOwner
+import com.android.customization.model.color.DefaultWallpaperColorResources
 import com.android.customization.model.color.WallpaperColorResources
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepository
 import com.android.systemui.shared.settings.data.repository.SecureSettingsRepositoryImpl
@@ -55,6 +56,7 @@ import com.android.wallpaper.picker.individual.IndividualPickerFragment
 import com.android.wallpaper.picker.undo.data.repository.UndoRepository
 import com.android.wallpaper.picker.undo.domain.interactor.UndoInteractor
 import com.android.wallpaper.util.DisplayUtils
+import dagger.Lazy
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -63,10 +65,9 @@ import kotlinx.coroutines.CoroutineScope
 @Singleton
 open class WallpaperPicker2Injector
 @Inject
-internal constructor(
+constructor(
     @MainDispatcher private val mainScope: CoroutineScope,
     @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
-    private val userEventLogger: UserEventLogger,
 ) : Injector {
     private var alarmManagerWrapper: AlarmManagerWrapper? = null
     private var bitmapCropper: BitmapCropper? = null
@@ -90,12 +91,13 @@ internal constructor(
     private var flags: BaseFlags? = null
     private var undoInteractor: UndoInteractor? = null
     private var wallpaperInteractor: WallpaperInteractor? = null
-    @Inject lateinit var injectedWallpaperInteractor: WallpaperInteractor
+    @Inject lateinit var injectedWallpaperInteractor: Lazy<WallpaperInteractor>
     private var wallpaperSnapshotRestorer: WallpaperSnapshotRestorer? = null
     private var secureSettingsRepository: SecureSettingsRepository? = null
     private var wallpaperColorsRepository: WallpaperColorsRepository? = null
     private var previewActivityIntentFactory: InlinePreviewIntentFactory? = null
     private var viewOnlyPreviewActivityIntentFactory: InlinePreviewIntentFactory? = null
+    @Inject lateinit var userEventLogger: Lazy<UserEventLogger>
 
     override fun getApplicationCoroutineScope(): CoroutineScope {
         return mainScope
@@ -240,8 +242,8 @@ internal constructor(
             ?: DefaultSystemFeatureChecker().also { systemFeatureChecker = it }
     }
 
-    override fun getUserEventLogger(context: Context): UserEventLogger {
-        return userEventLogger
+    override fun getUserEventLogger(): UserEventLogger {
+        return userEventLogger.get()
     }
 
     @Synchronized
@@ -301,7 +303,7 @@ internal constructor(
 
     override fun getWallpaperInteractor(context: Context): WallpaperInteractor {
         if (getFlags().isMultiCropEnabled() && getFlags().isMultiCropPreviewUiEnabled()) {
-            return injectedWallpaperInteractor
+            return injectedWallpaperInteractor.get()
         }
 
         val appContext = context.applicationContext
@@ -350,7 +352,7 @@ internal constructor(
         wallpaperColors: WallpaperColors,
         context: Context
     ): WallpaperColorResources {
-        return WallpaperColorResources(wallpaperColors)
+        return DefaultWallpaperColorResources(wallpaperColors)
     }
 
     override fun getMyPhotosIntentProvider(): MyPhotosStarter.MyPhotosIntentProvider {

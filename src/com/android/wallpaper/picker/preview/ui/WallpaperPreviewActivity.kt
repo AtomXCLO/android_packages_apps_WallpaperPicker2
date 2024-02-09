@@ -22,7 +22,9 @@ import android.graphics.Color
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
+import androidx.navigation.fragment.NavHostFragment
 import com.android.wallpaper.R
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.model.wallpaper.WallpaperModel
@@ -30,12 +32,19 @@ import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.BasePreviewActivity
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
+import com.android.wallpaper.picker.preview.ui.fragment.SmallPreviewFragment
+import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewActionsViewModel.Companion.getEditActivityIntent
+import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewActionsViewModel.Companion.isNewCreativeWallpaper
+import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.ActivityUtils
 import com.android.wallpaper.util.DisplayUtils
+import com.android.wallpaper.util.WallpaperConnection
 import com.android.wallpaper.util.converter.WallpaperModelFactory
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.runBlocking
 
 /** This activity holds the flow for the preview screen. */
 @AndroidEntryPoint(BasePreviewActivity::class)
@@ -47,6 +56,8 @@ class WallpaperPreviewActivity :
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
     @Inject lateinit var liveWallpaperDownloader: LiveWallpaperDownloader
 
+    private val wallpaperPreviewViewModel: WallpaperPreviewViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.navigationBarColor = Color.TRANSPARENT
@@ -54,6 +65,11 @@ class WallpaperPreviewActivity :
         setContentView(R.layout.activity_wallpaper_preview)
         // Fits screen to navbar and statusbar
         WindowCompat.setDecorFitsSystemWindows(window, ActivityUtils.isSUWMode(this))
+        val isAssetIdPresent = intent.getBooleanExtra(IS_ASSET_ID_PRESENT, false)
+        val whichPreview =
+            if (isAssetIdPresent) WallpaperConnection.WhichPreview.EDIT_NON_CURRENT
+            else WallpaperConnection.WhichPreview.EDIT_CURRENT
+        wallpaperPreviewViewModel.setWhichPreview(whichPreview)
         val wallpaper =
             checkNotNull(intent.getParcelableExtra(EXTRA_WALLPAPER_INFO, WallpaperInfo::class.java))
                 .convertToWallpaperModel()
@@ -65,6 +81,28 @@ class WallpaperPreviewActivity :
                 this,
                 wallpaper,
                 registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {}
+            )
+        }
+
+        val liveWallpaperModel = (wallpaper as? WallpaperModel.LiveWallpaperModel)
+        if (liveWallpaperModel != null && liveWallpaperModel.isNewCreativeWallpaper()) {
+            // If it's a new creative wallpaper, override the start destination to the fullscreen
+            // fragment for the create-new flow of creative wallpapers
+            val navController =
+                (supportFragmentManager.findFragmentById(R.id.wallpaper_preview_nav_host)
+                        as NavHostFragment)
+                    .navController
+            val navGraph =
+                navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
+            navGraph.setStartDestination(R.id.creativeNewPreviewFragment)
+            navController.setGraph(
+                navGraph,
+                Bundle().apply {
+                    putParcelable(
+                        SmallPreviewFragment.ARG_EDIT_INTENT,
+                        liveWallpaperModel.liveWallpaperData.getEditActivityIntent()
+                    )
+                }
             )
         }
     }
@@ -90,6 +128,9 @@ class WallpaperPreviewActivity :
 
     override fun onDestroy() {
         liveWallpaperDownloader.cleanup()
+        (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
+            runBlocking { WallpaperConnectionUtils.disconnect(applicationContext, it) }
+        }
         super.onDestroy()
     }
 
@@ -110,6 +151,7 @@ class WallpaperPreviewActivity :
         fun newIntent(
             context: Context,
             wallpaperInfo: WallpaperInfo,
+            isAssetIdPresent: Boolean,
             isNewTask: Boolean = false,
         ): Intent {
             val intent = Intent(context.applicationContext, WallpaperPreviewActivity::class.java)
@@ -119,6 +161,7 @@ class WallpaperPreviewActivity :
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
             intent.putExtra(EXTRA_WALLPAPER_INFO, wallpaperInfo)
+            intent.putExtra(IS_ASSET_ID_PRESENT, isAssetIdPresent)
             return intent
         }
     }

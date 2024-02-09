@@ -20,11 +20,13 @@ package com.android.wallpaper.testing
 import android.graphics.Bitmap
 import android.graphics.Rect
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
+import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import java.io.InputStream
 import kotlin.math.min
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,9 +87,17 @@ class FakeWallpaperClient : WallpaperClient {
         setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
+        inputStream: InputStream?,
         bitmap: Bitmap,
         cropHints: Map<ScreenOrientation, Rect>,
-        onDone: () -> Unit
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun setLiveWallpaper(
+        setWallpaperEntryPoint: Int,
+        destination: WallpaperDestination,
+        wallpaperModel: LiveWallpaperModel,
     ) {
         TODO("Not yet implemented")
     }

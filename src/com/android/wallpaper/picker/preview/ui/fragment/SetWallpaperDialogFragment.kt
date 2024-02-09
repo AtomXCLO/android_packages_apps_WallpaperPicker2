@@ -16,25 +16,32 @@
 
 package com.android.wallpaper.picker.preview.ui.fragment
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.android.wallpaper.R
+import com.android.wallpaper.picker.di.modules.MainDispatcher
+import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.picker.preview.ui.binder.SetWallpaperDialogBinder
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.DisplayUtils
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 
 /** Shows LS/HS previews and confirmation to set as wallpaper for HS, LS or both. */
 @AndroidEntryPoint(DialogFragment::class)
 class SetWallpaperDialogFragment : Hilt_SetWallpaperDialogFragment() {
 
     @Inject lateinit var displayUtils: DisplayUtils
+    @Inject @MainDispatcher lateinit var mainScope: CoroutineScope
 
     private val wallpaperPreviewViewModel by activityViewModels<WallpaperPreviewViewModel>()
 
@@ -47,14 +54,38 @@ class SetWallpaperDialogFragment : Hilt_SetWallpaperDialogFragment() {
             AlertDialog.Builder(requireContext(), R.style.SetWallpaperPreviewDialogTheme)
                 .setView(layout)
                 .create()
+
+        /**
+         * We need to keep the reference shortly, because the activity will be forced to restart due
+         * to the theme color update from the system wallpaper change. The activityReference is used
+         * to kill [WallpaperPreviewActivity].
+         */
+        val activityReference = activity
         SetWallpaperDialogBinder.bind(
-            dialog,
-            "Set",
-            "Cancel",
-        ) {
-            findNavController().popBackStack()
-        }
+            layout,
+            wallpaperPreviewViewModel,
+            displayUtils.hasMultiInternalDisplays(),
+            displayUtils.getRealSize(displayUtils.getWallpaperDisplay()),
+            lifecycleOwner = this,
+            mainScope,
+            onFinishActivity = {
+                Toast.makeText(
+                        context,
+                        R.string.wallpaper_set_successfully_message,
+                        Toast.LENGTH_SHORT
+                    )
+                    .show()
+                activityReference?.setResult(Activity.RESULT_OK)
+                activityReference?.finish()
+            },
+            onDismissDialog = { findNavController().popBackStack() },
+        )
 
         return dialog
+    }
+
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        wallpaperPreviewViewModel.dismissSetWallpaperDialog()
     }
 }

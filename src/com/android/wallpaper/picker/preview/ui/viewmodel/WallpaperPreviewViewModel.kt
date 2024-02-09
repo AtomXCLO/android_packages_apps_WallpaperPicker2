@@ -15,32 +15,44 @@
  */
 package com.android.wallpaper.picker.preview.ui.viewmodel
 
+import android.stats.style.StyleEnums
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.android.wallpaper.model.wallpaper.FoldableDisplay
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
 import com.android.wallpaper.model.wallpaper.WallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.Companion.isDownloadableWallpaper
+import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.CustomizationSections.Screen
+import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
+import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.PreviewUtils
+import com.android.wallpaper.util.WallpaperConnection.WhichPreview
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.launch
 
 /** Top level [ViewModel] for [WallpaperPreviewActivity] and its fragments */
 @HiltViewModel
 class WallpaperPreviewViewModel
 @Inject
 constructor(
-    interactor: WallpaperPreviewInteractor,
+    private val interactor: WallpaperPreviewInteractor,
     val staticWallpaperPreviewViewModel: StaticWallpaperPreviewViewModel,
     val previewActionsViewModel: PreviewActionsViewModel,
     private val displayUtils: DisplayUtils,
@@ -51,23 +63,55 @@ constructor(
     val smallerDisplaySize = displayUtils.getRealSize(displayUtils.getSmallerDisplay())
     val wallpaperDisplaySize = displayUtils.getRealSize(displayUtils.getWallpaperDisplay())
 
-    val wallpaper: Flow<WallpaperModel> = interactor.wallpaperModel
+    val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
+    private val _whichPreview = MutableStateFlow<WhichPreview?>(null)
+    private val whichPreview: Flow<WhichPreview> = _whichPreview.asStateFlow().filterNotNull()
+    fun setWhichPreview(whichPreview: WhichPreview) {
+        _whichPreview.value = whichPreview
+    }
+
+    private val _wallpaperConnectionColors: MutableStateFlow<WallpaperColorsModel> =
+        MutableStateFlow(WallpaperColorsModel.Loading as WallpaperColorsModel).apply {
+            viewModelScope.launch {
+                delay(1000)
+                if (value == WallpaperColorsModel.Loading) {
+                    emit(WallpaperColorsModel.Loaded(null))
+                }
+            }
+        }
+    private val liveWallpaperColors: Flow<WallpaperColorsModel> =
+        wallpaper
+            .filter { it is LiveWallpaperModel }
+            .combine(_wallpaperConnectionColors) { _, wallpaperConnectionColors ->
+                wallpaperConnectionColors
+            }
+    val wallpaperColorsModel: Flow<WallpaperColorsModel> =
+        merge(liveWallpaperColors, staticWallpaperPreviewViewModel.wallpaperColors)
 
     // This is only used for the full screen wallpaper preview.
     private val fullWallpaperPreviewConfigViewModel:
         MutableStateFlow<WallpaperPreviewConfigViewModel?> =
         MutableStateFlow(null)
 
+    // This is only used for the small screen wallpaper preview.
+    val smallWallpaper: Flow<Pair<WallpaperModel, WhichPreview>> =
+        combine(wallpaper.filterNotNull(), whichPreview) { wallpaper, whichPreview ->
+            Pair(wallpaper, whichPreview)
+        }
+
     // This is only used for the full screen wallpaper preview.
     val fullWallpaper: Flow<FullWallpaperPreviewViewModel> =
-        combine(wallpaper, fullWallpaperPreviewConfigViewModel.filterNotNull()) { wallpaper, config
-            ->
+        combine(
+            wallpaper.filterNotNull(),
+            fullWallpaperPreviewConfigViewModel.filterNotNull(),
+            whichPreview,
+        ) { wallpaper, config, whichPreview ->
             FullWallpaperPreviewViewModel(
                 wallpaper = wallpaper,
                 config = config,
                 allowUserCropping =
-                    wallpaper is WallpaperModel.StaticWallpaperModel &&
-                        !wallpaper.isDownloadableWallpaper()
+                    wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper(),
+                whichPreview = whichPreview,
             )
         }
 
@@ -84,10 +128,7 @@ constructor(
         combine(wallpaper, fullWallpaperPreviewConfigViewModel.filterNotNull()) {
             wallpaper,
             previewViewModel ->
-            if (
-                wallpaper is WallpaperModel.StaticWallpaperModel &&
-                    !wallpaper.isDownloadableWallpaper()
-            ) {
+            if (wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper()) {
                 {
                     staticWallpaperPreviewViewModel.fullPreviewCrop?.let {
                         staticWallpaperPreviewViewModel.updateCropHints(
@@ -100,8 +141,73 @@ constructor(
             }
         }
 
-    // If the wallpaper is a downloadable wallpaper, do not show the button
-    val isSetWallpaperButtonVisible: Flow<Boolean> = wallpaper.map { !it.isDownloadableWallpaper() }
+    private val _isSetWallpaperProgressBarVisible = MutableStateFlow(false)
+    val isSetWallpaperProgressBarVisible: Flow<Boolean> =
+        _isSetWallpaperProgressBarVisible.asStateFlow()
+
+    val onSetWallpaperButtonClicked: Flow<(() -> Unit)?> =
+        combine(
+            wallpaper,
+            staticWallpaperPreviewViewModel.fullResWallpaperViewModel,
+        ) { wallpaper, fullResWallpaperViewModel ->
+            if (
+                wallpaper == null ||
+                    wallpaper.isDownloadableWallpaper() ||
+                    (wallpaper is StaticWallpaperModel && fullResWallpaperViewModel == null)
+            ) {
+                null
+            } else {
+                { showSetWallpaperDialog(wallpaper, fullResWallpaperViewModel) }
+            }
+        }
+    val isSetWallpaperButtonVisible: Flow<Boolean> = onSetWallpaperButtonClicked.map { it != null }
+
+    private val _setWallpaperDialog = MutableStateFlow<WallpaperConfirmDialogViewModel?>(null)
+    val setWallpaperDialog = _setWallpaperDialog.asStateFlow()
+
+    private fun showSetWallpaperDialog(
+        viewModel: WallpaperModel,
+        scaleImageViewModel: FullResWallpaperViewModel?,
+    ) {
+        _setWallpaperDialog.value =
+            WallpaperConfirmDialogViewModel(
+                onConfirmButtonClicked = {
+                    _isSetWallpaperProgressBarVisible.value = true
+                    _setWallpaperDialog.value = null
+                    when (viewModel) {
+                        is StaticWallpaperModel ->
+                            scaleImageViewModel?.let {
+                                interactor.setStaticWallpaper(
+                                    setWallpaperEntryPoint =
+                                        StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
+                                    destination = WallpaperDestination.BOTH,
+                                    wallpaperModel = viewModel,
+                                    inputStream = it.stream,
+                                    bitmap = it.rawWallpaperBitmap,
+                                    cropHints = it.cropHints ?: emptyMap(),
+                                )
+                            }
+                        is LiveWallpaperModel -> {
+                            interactor.setLiveWallpaper(
+                                setWallpaperEntryPoint =
+                                    StyleEnums.SET_WALLPAPER_ENTRY_POINT_WALLPAPER_PREVIEW,
+                                destination = WallpaperDestination.BOTH,
+                                wallpaperModel = viewModel,
+                            )
+                        }
+                    }
+                },
+                onCancelButtonClicked = { _setWallpaperDialog.value = null },
+            )
+    }
+
+    fun dismissSetWallpaperDialog() {
+        _setWallpaperDialog.value = null
+    }
+
+    fun setWallpaperConnectionColors(wallpaperColors: WallpaperColorsModel) {
+        _wallpaperConnectionColors.value = wallpaperColors
+    }
 
     fun getWorkspacePreviewConfig(
         screen: Screen,
@@ -145,6 +251,15 @@ constructor(
             getWorkspacePreviewConfig(screen, foldableDisplay)
     }
 
+    fun setDefaultWallpaperPreviewConfigViewModel() {
+        fullWallpaperPreviewConfigViewModel.value =
+            WallpaperPreviewConfigViewModel(
+                Screen.HOME_SCREEN,
+                wallpaperDisplaySize,
+                ScreenOrientation.PORTRAIT
+            )
+    }
+
     private fun getWallpaperPreviewConfig(
         screen: Screen,
         orientation: ScreenOrientation,
@@ -167,5 +282,11 @@ constructor(
             displaySize = displaySize,
             screenOrientation = orientation,
         )
+    }
+
+    companion object {
+        private fun WallpaperModel.isDownloadableWallpaper(): Boolean {
+            return this is StaticWallpaperModel && this.downloadableWallpaperData != null
+        }
     }
 }

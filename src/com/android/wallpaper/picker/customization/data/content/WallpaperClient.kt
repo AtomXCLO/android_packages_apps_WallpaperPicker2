@@ -20,10 +20,12 @@ package com.android.wallpaper.picker.customization.data.content
 import android.graphics.Bitmap
 import android.graphics.Rect
 import com.android.wallpaper.model.wallpaper.ScreenOrientation
+import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import java.io.InputStream
 import kotlinx.coroutines.flow.Flow
 
 /** Defines interface for classes that can interact with the Wallpaper API. */
@@ -45,15 +47,27 @@ interface WallpaperClient {
      *   original, full-size bitmap.
      * @param cropHints The crop hints that indicate how the wallpaper should be cropped and render
      *   on the designated screen and orientation.
-     * @param onDone A callback to invoke when setting is done.
      */
     suspend fun setStaticWallpaper(
         @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
+        inputStream: InputStream?,
         bitmap: Bitmap,
         cropHints: Map<ScreenOrientation, Rect>,
-        onDone: () -> Unit,
+    )
+
+    /**
+     * Asynchronously sets a live wallpaper.
+     *
+     * @param setWallpaperEntryPoint The entry point where we set the wallpaper from.
+     * @param destination The screen to set the wallpaper on.
+     * @param wallpaperModel The wallpaper model of the wallpaper.
+     */
+    suspend fun setLiveWallpaper(
+        @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
+        destination: WallpaperDestination,
+        wallpaperModel: LiveWallpaperModel,
     )
 
     /**

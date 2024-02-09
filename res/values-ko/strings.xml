@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"홈 화면 배경화면 미리보기"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"컬렉션이 없습니다."</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"화면 분할 모드를 나간 다음 다시 시도해 주세요."</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"설정"</string>
     <string name="cancel" msgid="4970902691067201584">"취소"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI 미리보기 숨기기"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"UI를 미리보기에서 숨겼습니다. 숨기기 해제하려면 두 번 탭하세요."</string>
@@ -130,5 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"변경사항을 초기화하시겠습니까?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"변경사항이 저장되지 않습니다."</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"배경화면 더보기"</string>
-    <string name="recent_wallpaper_label" msgid="3996353584371118367">"배경화면 %1$s"</string>
+    <!-- no translation found for recents_wallpaper_label (8653165542635660222) -->
+    <skip />
+    <!-- no translation found for default_wallpaper_title (2541071182656978180) -->
+    <skip />
 </resources>

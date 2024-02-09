@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"ಹೋಮ್ ಸ್ಕ್ರೀನ್ ವಾಲ್‌ಪೇಪರ್‌ನ ಪೂರ್ವವೀಕ್ಷಣೆ"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"ಸಂಗ್ರಹಣೆ ಅಸ್ತಿತ್ವದಲ್ಲಿಲ್ಲ"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"ಸ್ಪ್ಲಿಟ್ ಸ್ಕ್ರೀನ್ ಮೋಡ್‌ನಿಂದ ನಿರ್ಗಮಿಸಿ ಹಾಗೂ ಪುನಃ ಪ್ರಯತ್ನಿಸಿ"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"ಸೆಟ್ ಮಾಡಿ"</string>
     <string name="cancel" msgid="4970902691067201584">"ರದ್ದುಮಾಡಿ"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"UI ಪೂರ್ವವೀಕ್ಷಣೆಯನ್ನು ಮರೆಮಾಡಿ"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"ಪೂರ್ವವೀಕ್ಷಣೆಯಲ್ಲಿ UI ಅನ್ನು ಮರೆಮಾಡಲಾಗಿದೆ. ಪ್ರದರ್ಶಿಸಲು ಡಬಲ್ ಟ್ಯಾಪ್ ಮಾಡಿ"</string>
@@ -130,5 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"ಬದಲಾವಣೆಗಳನ್ನು ರೀಸೆಟ್ ಮಾಡಬೇಕೆ?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"ನಿಮ್ಮ ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಲಾಗುವುದಿಲ್ಲ"</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"ಇನ್ನಷ್ಟು ವಾಲ್‌ಪೇಪರ್‌ಗಳು"</string>
-    <string name="recent_wallpaper_label" msgid="3996353584371118367">"ವಾಲ್‌ಪೇಪರ್ %1$s"</string>
+    <!-- no translation found for recents_wallpaper_label (8653165542635660222) -->
+    <skip />
+    <!-- no translation found for default_wallpaper_title (2541071182656978180) -->
+    <skip />
 </resources>

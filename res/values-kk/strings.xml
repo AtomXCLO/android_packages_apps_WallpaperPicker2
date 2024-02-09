@@ -104,6 +104,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Негізгі экран тұсқағазын алдын ала көру"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Жинақ жоқ."</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Экранды бөлу режимінен шығып, қайталап көріңіз."</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Орнату"</string>
     <string name="cancel" msgid="4970902691067201584">"Бас тарту"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Алдын ала көру экранын жасыру"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Пайдаланушы интерфейсі алдын ала көру режимінде жасырылған. Көрсету үшін екі рет түртіңіз."</string>
@@ -130,5 +131,8 @@
     <string name="reset_confirmation_dialog_title" msgid="3391905685838213712">"Өзгертулерді қайтару керек пе?"</string>
     <string name="reset_confirmation_dialog_message" msgid="888669268626289603">"Өзгертулер сақталмайды."</string>
     <string name="more_wallpapers" msgid="8116268433411881705">"Басқа да тұсқағаздар"</string>
-    <string name="recent_wallpaper_label" msgid="3996353584371118367">"Тұсқағаз: %1$s"</string>
+    <!-- no translation found for recents_wallpaper_label (8653165542635660222) -->
+    <skip />
+    <!-- no translation found for default_wallpaper_title (2541071182656978180) -->
+    <skip />
 </resources>

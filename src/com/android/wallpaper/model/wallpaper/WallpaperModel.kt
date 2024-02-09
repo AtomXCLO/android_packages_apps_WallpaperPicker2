@@ -43,10 +43,4 @@ sealed class WallpaperModel {
         val networkWallpaperData: NetworkWallpaperData?,
         val downloadableWallpaperData: DownloadableWallpaperData?,
     ) : WallpaperModel()
-
-    companion object {
-        fun WallpaperModel.isDownloadableWallpaper(): Boolean {
-            return this is StaticWallpaperModel && this.downloadableWallpaperData != null
-        }
-    }
 }
