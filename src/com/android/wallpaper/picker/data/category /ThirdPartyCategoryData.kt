@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.model.category
+package com.android.wallpaper.picker.data.category
+
+import android.content.pm.ResolveInfo
 
 /**
- * Represents set of attributes for depicting the block used for accessing personal photos on
+ * Represents set of attributes required for displaying a 3rd party wallpaper app installed on
  * device.
  */
-data class ImageCategoryData(val overlayIconResId: Int)
+data class ThirdPartyCategoryData(val resolveInfo: ResolveInfo)

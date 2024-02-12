@@ -17,10 +17,9 @@
 
 package com.android.wallpaper.testing
 
-import android.app.WallpaperColors
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.Rect
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
@@ -90,7 +89,7 @@ class FakeWallpaperClient : WallpaperClient {
         wallpaperModel: StaticWallpaperModel,
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect>,
+        cropHints: Map<Point, Rect>,
     ) {
         TODO("Not yet implemented")
     }
@@ -135,13 +134,6 @@ class FakeWallpaperClient : WallpaperClient {
 
     override fun areRecentsAvailable(): Boolean {
         return true
-    }
-
-    override suspend fun getWallpaperColors(
-        bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect>?
-    ): WallpaperColors? {
-        return null
     }
 
     companion object {

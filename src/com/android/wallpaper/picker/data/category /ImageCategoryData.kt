@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.model.category
+package com.android.wallpaper.picker.data.category
 
-import com.android.wallpaper.asset.Asset
-import com.android.wallpaper.picker.data.WallpaperModel
+import android.graphics.drawable.Drawable
 
-/** Represents set of attributes that depict a collection of wallpapers. */
-data class CollectionCategoryData(
-    val wallpaperModels: List<WallpaperModel>,
-    val thumbAsset: Asset,
-    val collectionName: String,
-    val rotationEnabled: Boolean,
-    val isSingleWallpaperCategory: Boolean
-)
+/**
+ * Represents set of attributes for depicting the block used for accessing personal photos on
+ * device.
+ */
+data class ImageCategoryData(val overlayIconDrawable: Drawable?)

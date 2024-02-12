@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.model.category
+package com.android.wallpaper.picker.data.category
 
-/** Represents set of attributes that are common for all categories. */
-data class CommonCategoryData(val title: String, val collectionId: String, val priority: Int)
+/**
+ * Represents the model class that would be used for instantiating any type of category in the
+ * picker. Only commonCategory is mandatory while others are optional.
+ */
+class CategoryModel(
+    val commonCategoryData: CommonCategoryData,
+    val thirdPartyCategoryData: ThirdPartyCategoryData? = null,
+    val imageCategoryData: ImageCategoryData? = null,
+    val collectionCategoryData: CollectionCategoryData? = null
+)
