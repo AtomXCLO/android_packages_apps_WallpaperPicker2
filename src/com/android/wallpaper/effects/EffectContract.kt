@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.picker.preview.ui.viewmodel
+package com.android.wallpaper.effects
 
-data class WallpaperConfirmDialogViewModel(
-    val onConfirmButtonClicked: suspend () -> Unit,
-    val onCancelButtonClicked: () -> Unit,
-)
+/** Contract between picker and effects. */
+object EffectContract {
+    const val ASSET_ID = "ASSET_ID"
+
+    /** Key value for querying effect id. */
+    const val KEY_EFFECT_ID = "id"
+
+    /** Key value for querying effect title. */
+    const val KEY_EFFECT_TITLE = "effectTitle"
+}

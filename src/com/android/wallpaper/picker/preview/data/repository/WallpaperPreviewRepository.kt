@@ -16,6 +16,7 @@
 
 package com.android.wallpaper.picker.preview.data.repository
 
+import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
@@ -35,6 +36,7 @@ class WallpaperPreviewRepository
 @Inject
 constructor(
     private val liveWallpaperDownloader: LiveWallpaperDownloader,
+    private val preferences: WallpaperPreferences,
     @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
 ) {
     /** This [WallpaperModel] represents the current selected wallpaper */
@@ -43,6 +45,15 @@ constructor(
 
     fun setWallpaperModel(wallpaperModel: WallpaperModel) {
         _wallpaperModel.value = wallpaperModel
+    }
+
+    private val _hasTooltipBeenShown: MutableStateFlow<Boolean> =
+        MutableStateFlow(preferences.getHasPreviewTooltipBeenShown())
+    val hasTooltipBeenShown: StateFlow<Boolean> = _hasTooltipBeenShown.asStateFlow()
+
+    fun dismissTooltip() {
+        _hasTooltipBeenShown.value = true
+        preferences.setHasPreviewTooltipBeenShown(true)
     }
 
     suspend fun downloadWallpaper(): LiveWallpaperDownloadResultModel? =

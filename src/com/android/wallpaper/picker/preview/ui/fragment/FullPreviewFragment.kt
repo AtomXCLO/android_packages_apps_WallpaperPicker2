@@ -128,7 +128,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
             lifecycleOwner = viewLifecycleOwner,
         )
 
-        if (wallpaperPreviewViewModel.showTooltip.value) {
+        if (wallpaperPreviewViewModel.shouldShowTooltipWorkflow()) {
             inflater.inflate(R.layout.tooltip_full_preview, view as ViewGroup)
             val tooltip = view.requireViewById<View>(R.id.tooltip)
             PreviewTooltipBinder.bind(
@@ -136,7 +136,7 @@ class FullPreviewFragment : Hilt_FullPreviewFragment() {
                 viewModel = wallpaperPreviewViewModel,
                 lifecycleOwner = viewLifecycleOwner
             )
-            tooltip.setOnClickListener { wallpaperPreviewViewModel.setShowTooltip(false) }
+            tooltip.setOnClickListener { wallpaperPreviewViewModel.dismissTooltip() }
         }
 
         return view

@@ -34,10 +34,13 @@ import kotlinx.coroutines.flow.StateFlow
 class WallpaperPreviewInteractor
 @Inject
 constructor(
-    wallpaperPreviewRepository: WallpaperPreviewRepository,
+    private val wallpaperPreviewRepository: WallpaperPreviewRepository,
     private val wallpaperRepository: WallpaperRepository,
 ) {
     val wallpaperModel: StateFlow<WallpaperModel?> = wallpaperPreviewRepository.wallpaperModel
+
+    val hasTooltipBeenShown: StateFlow<Boolean> = wallpaperPreviewRepository.hasTooltipBeenShown
+    fun dismissTooltip() = wallpaperPreviewRepository.dismissTooltip()
 
     suspend fun setStaticWallpaper(
         @UserEventLogger.SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
