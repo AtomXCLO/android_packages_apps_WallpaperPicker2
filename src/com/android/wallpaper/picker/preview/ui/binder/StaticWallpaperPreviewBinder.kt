@@ -17,7 +17,6 @@ package com.android.wallpaper.picker.preview.ui.binder
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.graphics.Bitmap
 import android.graphics.Point
 import android.graphics.Rect
 import android.graphics.RenderEffect
@@ -30,9 +29,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.util.FullResImageViewUtil
 import com.android.wallpaper.picker.preview.ui.view.SystemScaledWallpaperPreviewSurfaceView
 import com.android.wallpaper.picker.preview.ui.viewmodel.StaticWallpaperPreviewViewModel
+import com.android.wallpaper.util.RtlUtils
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.WallpaperSurfaceCallback.LOW_RES_BITMAP_BLUR_RADIUS
 import com.davemorrissey.labs.subscaleview.ImageSource
@@ -60,27 +61,34 @@ object StaticWallpaperPreviewBinder {
                 launch { viewModel.lowResBitmap.collect { lowResImageView.setImageBitmap(it) } }
 
                 launch {
-                    viewModel.subsamplingScaleImageViewModel.collect {
-                        val cropHint = it.cropHints?.get(displaySize)
+                    viewModel.subsamplingScaleImageViewModel.collect { imageModel ->
+                        val cropHint = imageModel.fullPreviewCropModels?.get(displaySize)?.cropHint
                         fullResImageView.setFullResImage(
-                            it.rawWallpaperBitmap,
-                            it.rawWallpaperSize,
+                            ImageSource.cachedBitmap(imageModel.rawWallpaperBitmap),
+                            imageModel.rawWallpaperSize,
+                            displaySize,
                             cropHint,
+                            RtlUtils.isRtl(lowResImageView.context),
                             shouldCalibrateWithSystemScale,
                         )
 
-                        // Both small and full previews change fullPreviewCrop but it should track
-                        // only full preview crop, initial value should align with existing crop
-                        // otherwise it's a new preview selection and use current visible crop
-                        viewModel.fullPreviewCrop =
-                            cropHint
-                                ?: WallpaperCropUtils.calculateVisibleRect(
-                                    it.rawWallpaperSize,
-                                    Point(
-                                        fullResImageView.measuredWidth,
-                                        fullResImageView.measuredHeight
-                                    )
-                                )
+                        // Fill in the default crop region if the displaySize for this preview is
+                        // missing.
+                        viewModel.fullPreviewCropModels.putIfAbsent(
+                            displaySize,
+                            FullPreviewCropModel(
+                                cropHint =
+                                    WallpaperCropUtils.calculateVisibleRect(
+                                        imageModel.rawWallpaperSize,
+                                        Point(
+                                            fullResImageView.measuredWidth,
+                                            fullResImageView.measuredHeight
+                                        )
+                                    ),
+                                cropSizeModel = null,
+                            )
+                        )
+
                         crossFadeInFullResImageView(lowResImageView, fullResImageView)
                     }
                 }
@@ -111,18 +119,22 @@ object StaticWallpaperPreviewBinder {
      *   this system scale to [SubsamplingScaleImageView].
      */
     private fun SubsamplingScaleImageView.setFullResImage(
-        rawWallpaperBitmap: Bitmap,
+        imageSource: ImageSource,
         rawWallpaperSize: Point,
+        displaySize: Point,
         cropHint: Rect?,
+        isRtl: Boolean,
         shouldCalibrateWithSystemScale: Boolean = false,
     ) {
         // Set the full res image
-        setImage(ImageSource.bitmap(rawWallpaperBitmap))
+        setImage(imageSource)
         // Calculate the scale and the center point for the full res image
         FullResImageViewUtil.getScaleAndCenter(
                 Point(measuredWidth, measuredHeight),
                 rawWallpaperSize,
+                displaySize,
                 cropHint,
+                isRtl,
             )
             .let { scaleAndCenter ->
                 minScale = scaleAndCenter.minScale

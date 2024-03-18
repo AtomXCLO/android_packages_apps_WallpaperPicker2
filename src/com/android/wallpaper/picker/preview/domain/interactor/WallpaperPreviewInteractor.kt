@@ -16,6 +16,7 @@
 
 package com.android.wallpaper.picker.preview.domain.interactor
 
+import android.app.WallpaperColors
 import android.graphics.Bitmap
 import android.graphics.Point
 import android.graphics.Rect
@@ -25,6 +26,7 @@ import com.android.wallpaper.picker.customization.shared.model.WallpaperDestinat
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import dagger.hilt.android.scopes.ActivityRetainedScoped
 import java.io.InputStream
 import javax.inject.Inject
@@ -48,7 +50,8 @@ constructor(
         wallpaperModel: StaticWallpaperModel,
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<Point, Rect>,
+        wallpaperSize: Point,
+        fullPreviewCropModels: Map<Point, FullPreviewCropModel>? = null,
     ) {
         wallpaperRepository.setStaticWallpaper(
             setWallpaperEntryPoint,
@@ -56,7 +59,8 @@ constructor(
             wallpaperModel,
             inputStream,
             bitmap,
-            cropHints,
+            wallpaperSize,
+            fullPreviewCropModels,
         )
     }
 
@@ -71,4 +75,7 @@ constructor(
             wallpaperModel,
         )
     }
+
+    suspend fun getWallpaperColors(bitmap: Bitmap, cropHints: Map<Point, Rect>?): WallpaperColors? =
+        wallpaperRepository.getWallpaperColors(bitmap, cropHints)
 }
