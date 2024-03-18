@@ -18,6 +18,7 @@ package com.android.wallpaper.module
 import android.app.WallpaperColors
 import android.app.WallpaperManager.SetWallpaperFlags
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.Rect
 import android.text.TextUtils
 import androidx.annotation.IntDef
@@ -25,10 +26,9 @@ import com.android.wallpaper.model.LiveWallpaperInfo
 import com.android.wallpaper.model.LiveWallpaperPrefMetadata
 import com.android.wallpaper.model.StaticWallpaperPrefMetadata
 import com.android.wallpaper.model.WallpaperInfo
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 
 /** Interface for persisting and retrieving wallpaper specific preferences. */
 interface WallpaperPreferences {
@@ -392,7 +392,7 @@ interface WallpaperPreferences {
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
         bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect?>,
+        cropHints: Map<Point, Rect?>,
     )
 
     /**
@@ -407,10 +407,16 @@ interface WallpaperPreferences {
     )
 
     /** Stores wallpaper crop hints for each dimensions. */
-    fun storeWallpaperCropHints(cropHints: Map<ScreenOrientation, Rect?>)
+    fun storeWallpaperCropHints(cropHints: Map<Point, Rect?>)
 
     /** Gets wallpaper crop hints for each dimensions. */
-    fun getWallpaperCropHints(): Map<ScreenOrientation, Rect?>
+    fun getWallpaperCropHints(): Map<Point, Rect?>
+
+    /** Sets whether the preview tooltip should be shown. */
+    fun setHasPreviewTooltipBeenShown(hasTooltipBeenShown: Boolean)
+
+    /** Gets whether the preview tooltip should be shown. */
+    fun getHasPreviewTooltipBeenShown(): Boolean
 
     /** The possible wallpaper presentation modes, i.e., either "static" or "rotating". */
     @IntDef(PRESENTATION_MODE_STATIC, PRESENTATION_MODE_ROTATING) annotation class PresentationMode

@@ -19,17 +19,15 @@ package com.android.wallpaper.testing
 import android.app.WallpaperColors
 import android.content.ComponentName
 import android.graphics.Color
-import android.graphics.Rect
 import android.net.Uri
 import com.android.wallpaper.asset.Asset
-import com.android.wallpaper.model.wallpaper.ColorInfo
-import com.android.wallpaper.model.wallpaper.CommonWallpaperData
-import com.android.wallpaper.model.wallpaper.Destination
-import com.android.wallpaper.model.wallpaper.ImageWallpaperData
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.StaticWallpaperData
-import com.android.wallpaper.model.wallpaper.WallpaperId
-import com.android.wallpaper.model.wallpaper.WallpaperModel
+import com.android.wallpaper.picker.data.ColorInfo
+import com.android.wallpaper.picker.data.CommonWallpaperData
+import com.android.wallpaper.picker.data.Destination
+import com.android.wallpaper.picker.data.ImageWallpaperData
+import com.android.wallpaper.picker.data.StaticWallpaperData
+import com.android.wallpaper.picker.data.WallpaperId
+import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 
 class WallpaperModelUtils {
@@ -79,7 +77,7 @@ class WallpaperModelUtils {
                 staticWallpaperData =
                     StaticWallpaperData(
                         asset,
-                        mapOf(ScreenOrientation.PORTRAIT to Rect(0, 0, 0, 0)),
+                        emptyMap(),
                     ),
                 imageWallpaperData = ImageWallpaperData(Uri.EMPTY),
                 networkWallpaperData = null,

@@ -26,23 +26,24 @@ import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Point
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Looper
 import android.util.Log
+import androidx.collection.ArrayMap
 import com.android.wallpaper.asset.BitmapUtils
 import com.android.wallpaper.model.CreativeCategory
 import com.android.wallpaper.model.LiveWallpaperPrefMetadata
 import com.android.wallpaper.model.StaticWallpaperPrefMetadata
 import com.android.wallpaper.model.WallpaperInfo
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.InjectorProvider
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import java.io.IOException
 import java.io.InputStream
 import java.util.EnumMap
@@ -122,7 +123,7 @@ class WallpaperClientImpl(
         wallpaperModel: StaticWallpaperModel,
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect>,
+        cropHints: Map<Point, Rect>,
     ) {
         if (destination == WallpaperDestination.HOME || destination == WallpaperDestination.BOTH) {
             // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
@@ -140,6 +141,7 @@ class WallpaperClientImpl(
         )
 
         // Save the static wallpaper to recent wallpapers
+        // TODO(b/309138446): check if we can update recent with all cropHints from WM later
         wallpaperPreferences.addStaticWallpaperToRecentWallpapers(
             destination,
             wallpaperModel,
@@ -164,21 +166,21 @@ class WallpaperClientImpl(
     private fun WallpaperManager.setStaticWallpaperToSystem(
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect>,
+        cropHints: Map<Point, Rect>,
         destination: WallpaperDestination,
     ): Int {
-        // TODO (b/309138446): Use the new multi-crop API from WallpaperManager
         return if (inputStream != null) {
-            setStream(
+            setStreamWithCrops(
                 inputStream,
-                cropHints[ScreenOrientation.PORTRAIT],
-                true,
+                cropHints,
+                /* allowBackup= */ true,
+                destination.toFlags(),
             )
         } else {
-            setBitmap(
+            setBitmapWithCrops(
                 bitmap,
-                cropHints[ScreenOrientation.PORTRAIT],
-                true,
+                cropHints,
+                /* allowBackup= */ true,
                 destination.toFlags(),
             )
         }
@@ -533,6 +535,26 @@ class WallpaperClientImpl(
                 }
         }
         return recentsContentProviderAvailable == true
+    }
+
+    override fun getCurrentCropHints(
+        displaySizes: MutableList<Point>,
+        @WallpaperManager.SetWallpaperFlags which: Int
+    ): Map<Point, Rect>? {
+        val flags = InjectorProvider.getInjector().getFlags()
+        val isMultiCropEnabled = flags.isMultiCropPreviewUiEnabled() && flags.isMultiCropEnabled()
+        if (!isMultiCropEnabled) {
+            return null
+        }
+        val cropHints: List<Rect>? =
+            wallpaperManager.getBitmapCrops(displaySizes, which, /* originalBitmap= */ true)
+        val cropHintsMap: MutableMap<Point, Rect> = ArrayMap()
+        if (cropHints != null) {
+            for (i in cropHints.indices) {
+                cropHintsMap[displaySizes[i]] = cropHints[i]
+            }
+        }
+        return cropHintsMap
     }
 
     fun WallpaperDestination.asString(): String {

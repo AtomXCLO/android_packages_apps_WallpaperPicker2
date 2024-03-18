@@ -17,16 +17,16 @@ package com.android.wallpaper.picker.preview.ui.binder
 
 import android.app.WallpaperColors
 import android.content.Context
+import android.graphics.Point
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.android.wallpaper.R
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel
 import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
+import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil
 import com.android.wallpaper.picker.preview.ui.util.SurfaceViewUtil.attachView
@@ -51,7 +51,7 @@ object SmallWallpaperPreviewBinder {
         surface: SurfaceView,
         viewModel: WallpaperPreviewViewModel,
         screen: Screen,
-        screenOrientation: ScreenOrientation,
+        displaySize: Point,
         applicationContext: Context,
         @MainDispatcher mainScope: CoroutineScope,
         viewLifecycleOwner: LifecycleOwner,
@@ -90,11 +90,19 @@ object SmallWallpaperPreviewBinder {
                                     surface.attachView(staticPreviewView)
                                     // Bind static wallpaper
                                     StaticWallpaperPreviewBinder.bind(
-                                        staticPreviewView.requireViewById(R.id.low_res_image),
-                                        staticPreviewView.requireViewById(R.id.full_res_image),
-                                        viewModel.staticWallpaperPreviewViewModel,
-                                        screenOrientation,
-                                        viewLifecycleOwner,
+                                        lowResImageView =
+                                            staticPreviewView.requireViewById(R.id.low_res_image),
+                                        fullResImageView =
+                                            staticPreviewView.requireViewById(R.id.full_res_image),
+                                        viewModel = viewModel.staticWallpaperPreviewViewModel,
+                                        displaySize = displaySize,
+                                        viewLifecycleOwner = viewLifecycleOwner,
+                                        shouldCalibrateWithSystemScale = true,
+                                    )
+                                    // This is to possibly shut down all live wallpaper services
+                                    // if they exist; otherwise static wallpaper can not show up.
+                                    WallpaperConnectionUtils.disconnectAllServices(
+                                        applicationContext
                                     )
                                 }
                             }

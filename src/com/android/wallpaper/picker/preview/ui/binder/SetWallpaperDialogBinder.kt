@@ -27,7 +27,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.FoldableDisplay
-import com.android.wallpaper.model.wallpaper.getScreenOrientation
 import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
@@ -38,7 +37,10 @@ import kotlinx.coroutines.launch
 /** Binds the dialog on small preview confirming and setting wallpaper with destination. */
 object SetWallpaperDialogBinder {
     private val PreviewScreenIds =
-        mapOf(Screen.LOCK_SCREEN to R.id.lock_preview, Screen.HOME_SCREEN to R.id.home_preview)
+        mapOf(
+            Screen.LOCK_SCREEN to R.id.lock_preview_selector,
+            Screen.HOME_SCREEN to R.id.home_preview_selector
+        )
 
     fun bind(
         dialogContent: View,
@@ -47,47 +49,71 @@ object SetWallpaperDialogBinder {
         handheldDisplaySize: Point,
         lifecycleOwner: LifecycleOwner,
         mainScope: CoroutineScope,
+        currentNavDestId: Int,
         onFinishActivity: () -> Unit,
         onDismissDialog: () -> Unit,
+        navigate: ((View) -> Unit)?,
     ) {
+        val previewLayout: View =
+            if (isFoldable) dialogContent.requireViewById(R.id.foldable_previews)
+            else dialogContent.requireViewById(R.id.handheld_previews)
         if (isFoldable)
             bindFoldablePreview(
-                dialogContent.requireViewById(R.id.foldable_previews),
+                previewLayout,
                 wallpaperPreviewViewModel,
                 lifecycleOwner,
                 mainScope,
+                currentNavDestId,
+                navigate,
             )
         else
             bindHandheldPreview(
-                dialogContent.requireViewById(R.id.handheld_previews),
+                previewLayout,
                 wallpaperPreviewViewModel,
                 handheldDisplaySize,
                 lifecycleOwner,
                 mainScope,
+                currentNavDestId,
+                navigate,
             )
-        val confirmButton = dialogContent.requireViewById<Button>(R.id.button_set)
+
         val cancelButton = dialogContent.requireViewById<Button>(R.id.button_cancel)
+        cancelButton.setOnClickListener { onDismissDialog() }
+
+        val confirmButton = dialogContent.requireViewById<Button>(R.id.button_set)
         lifecycleOwner.lifecycleScope.launch {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    wallpaperPreviewViewModel.setWallpaperDialog.collect { dialog ->
-                        if (dialog == null) {
-                            onDismissDialog.invoke()
-                        } else {
-                            confirmButton.setOnClickListener {
-                                // We on purposely use mainScope (application scope) to launch the
-                                // task since the activity can be forced to restart due to the theme
-                                // color update from the system wallpaper change.
-                                // Application scope can survive the activity restart and continue
-                                // subscribing the job.
-                                mainScope.launch {
-                                    dialog.onConfirmButtonClicked.invoke()
-                                    onFinishActivity.invoke()
-                                }
+                    wallpaperPreviewViewModel.showSetWallpaperDialog.collect { show ->
+                        if (!show) {
+                            onDismissDialog()
+                        }
+                    }
+                }
+
+                launch {
+                    wallpaperPreviewViewModel.setWallpaperDialogOnConfirmButtonClicked.collect {
+                        onClicked ->
+                        confirmButton.setOnClickListener {
+                            mainScope.launch {
+                                onClicked()
+                                onFinishActivity()
                             }
-                            cancelButton.setOnClickListener {
-                                dialog.onCancelButtonClicked.invoke()
-                            }
+                        }
+                    }
+                }
+
+                launch {
+                    wallpaperPreviewViewModel.setWallpaperDialogSelectedScreens.collect {
+                        selectedScreens ->
+                        confirmButton.isEnabled = selectedScreens.isNotEmpty()
+                        PreviewScreenIds.forEach { screenId ->
+                            bindPreviewSelector(
+                                previewLayout.requireViewById(screenId.value),
+                                screenId.key,
+                                selectedScreens,
+                                wallpaperPreviewViewModel,
+                            )
                         }
                     }
                 }
@@ -100,6 +126,8 @@ object SetWallpaperDialogBinder {
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         lifecycleOwner: LifecycleOwner,
         mainScope: CoroutineScope,
+        currentNavDestId: Int,
+        navigate: ((View) -> Unit)?,
     ) {
         previewLayout.isVisible = true
         PreviewScreenIds.forEach { screenId ->
@@ -124,9 +152,10 @@ object SetWallpaperDialogBinder {
                         mainScope = mainScope,
                         viewLifecycleOwner = lifecycleOwner,
                         screen = screenId.key,
-                        orientation = getScreenOrientation(it, display),
+                        displaySize = it,
                         foldableDisplay = display,
-                        navigate = null,
+                        currentNavDestId = currentNavDestId,
+                        navigate = navigate,
                     )
                 }
             }
@@ -139,6 +168,8 @@ object SetWallpaperDialogBinder {
         displaySize: Point,
         lifecycleOwner: LifecycleOwner,
         mainScope: CoroutineScope,
+        currentNavDestId: Int,
+        navigate: ((View) -> Unit)?,
     ) {
         previewLayout.isVisible = true
         PreviewScreenIds.forEach { screenId ->
@@ -150,12 +181,23 @@ object SetWallpaperDialogBinder {
                         .requireViewById(R.id.preview),
                 viewModel = wallpaperPreviewViewModel,
                 screen = screenId.key,
-                orientation = getScreenOrientation(displaySize),
+                displaySize = displaySize,
                 foldableDisplay = null,
                 mainScope = mainScope,
                 viewLifecycleOwner = lifecycleOwner,
-                navigate = null,
+                currentNavDestId = currentNavDestId,
+                navigate = navigate,
             )
         }
+    }
+
+    private fun bindPreviewSelector(
+        selector: View,
+        screen: Screen,
+        selectedScreens: Set<Screen>,
+        dialogViewModel: WallpaperPreviewViewModel,
+    ) {
+        selector.isActivated = selectedScreens.contains(screen)
+        selector.setOnClickListener { dialogViewModel.onSetWallpaperDialogScreenSelected(screen) }
     }
 }

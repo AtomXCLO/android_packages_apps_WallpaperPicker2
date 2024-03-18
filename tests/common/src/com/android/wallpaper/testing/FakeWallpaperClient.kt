@@ -18,14 +18,14 @@
 package com.android.wallpaper.testing
 
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.Rect
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.data.content.WallpaperClient
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import java.io.InputStream
 import kotlin.math.min
 import kotlinx.coroutines.flow.Flow
@@ -89,7 +89,7 @@ class FakeWallpaperClient : WallpaperClient {
         wallpaperModel: StaticWallpaperModel,
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect>,
+        cropHints: Map<Point, Rect>,
     ) {
         TODO("Not yet implemented")
     }
@@ -134,6 +134,13 @@ class FakeWallpaperClient : WallpaperClient {
 
     override fun areRecentsAvailable(): Boolean {
         return true
+    }
+
+    override fun getCurrentCropHints(
+        displaySizes: MutableList<Point>,
+        which: Int
+    ): Map<Point, Rect>? {
+        return emptyMap()
     }
 
     companion object {

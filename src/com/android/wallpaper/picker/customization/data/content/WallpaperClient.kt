@@ -17,14 +17,15 @@
 
 package com.android.wallpaper.picker.customization.data.content
 
+import android.app.WallpaperManager
 import android.graphics.Bitmap
+import android.graphics.Point
 import android.graphics.Rect
-import com.android.wallpaper.model.wallpaper.ScreenOrientation
-import com.android.wallpaper.model.wallpaper.WallpaperModel.LiveWallpaperModel
-import com.android.wallpaper.model.wallpaper.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
+import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import java.io.InputStream
 import kotlinx.coroutines.flow.Flow
 
@@ -54,7 +55,7 @@ interface WallpaperClient {
         wallpaperModel: StaticWallpaperModel,
         inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<ScreenOrientation, Rect>,
+        cropHints: Map<Point, Rect>,
     )
 
     /**
@@ -91,4 +92,9 @@ interface WallpaperClient {
 
     /** Returns whether the recent wallpapers provider is available. */
     fun areRecentsAvailable(): Boolean
+
+    fun getCurrentCropHints(
+        displaySizes: MutableList<Point>,
+        @WallpaperManager.SetWallpaperFlags which: Int
+    ): Map<Point, Rect>?
 }
