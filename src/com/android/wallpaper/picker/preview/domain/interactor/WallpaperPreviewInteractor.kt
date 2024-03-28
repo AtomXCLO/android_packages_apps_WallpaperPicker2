@@ -20,6 +20,7 @@ import android.app.WallpaperColors
 import android.graphics.Bitmap
 import android.graphics.Point
 import android.graphics.Rect
+import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.customization.data.repository.WallpaperRepository
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
@@ -28,7 +29,6 @@ import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import dagger.hilt.android.scopes.ActivityRetainedScoped
-import java.io.InputStream
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 
@@ -48,18 +48,18 @@ constructor(
         @UserEventLogger.SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
-        inputStream: InputStream?,
         bitmap: Bitmap,
         wallpaperSize: Point,
+        asset: Asset,
         fullPreviewCropModels: Map<Point, FullPreviewCropModel>? = null,
     ) {
         wallpaperRepository.setStaticWallpaper(
             setWallpaperEntryPoint,
             destination,
             wallpaperModel,
-            inputStream,
             bitmap,
             wallpaperSize,
+            asset,
             fullPreviewCropModels,
         )
     }

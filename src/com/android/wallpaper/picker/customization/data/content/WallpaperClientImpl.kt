@@ -36,7 +36,10 @@ import android.net.Uri
 import android.os.Looper
 import android.util.Log
 import androidx.collection.ArrayMap
+import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.asset.BitmapUtils
+import com.android.wallpaper.asset.CurrentWallpaperAsset
+import com.android.wallpaper.asset.StreamableAsset
 import com.android.wallpaper.model.CreativeCategory
 import com.android.wallpaper.model.LiveWallpaperPrefMetadata
 import com.android.wallpaper.model.StaticWallpaperPrefMetadata
@@ -57,6 +60,7 @@ import com.android.wallpaper.util.WallpaperCropUtils
 import java.io.IOException
 import java.io.InputStream
 import java.util.EnumMap
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -131,9 +135,9 @@ class WallpaperClientImpl(
         @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
-        inputStream: InputStream?,
         bitmap: Bitmap,
         wallpaperSize: Point,
+        asset: Asset,
         fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     ) {
         if (destination == HOME || destination == BOTH) {
@@ -150,10 +154,11 @@ class WallpaperClientImpl(
                 ?: emptyMap()
         val managerId =
             wallpaperManager.setStaticWallpaperToSystem(
-                inputStream,
+                asset.getStream(),
                 bitmap,
                 cropHintsWithParallax,
                 destination,
+                asset,
             )
 
         wallpaperPreferences.setStaticWallpaperMetadata(
@@ -167,8 +172,7 @@ class WallpaperClientImpl(
             destination,
             wallpaperModel,
             bitmap,
-            // TODO (b/309139122): Introduce crop hints to recent wallpapers
-            emptyMap(),
+            cropHintsWithParallax,
         )
     }
 
@@ -189,8 +193,11 @@ class WallpaperClientImpl(
         bitmap: Bitmap,
         cropHints: Map<Point, Rect>,
         destination: WallpaperDestination,
+        asset: Asset,
     ): Int {
-        return if (inputStream != null) {
+        // The InputStream of current wallpaper points to system wallpaper file which will be
+        // overwritten during set wallpaper and reads 0 bytes, use Bitmap instead.
+        return if (inputStream != null && asset !is CurrentWallpaperAsset) {
             setStreamWithCrops(
                 inputStream,
                 cropHints,
@@ -623,6 +630,15 @@ class WallpaperClientImpl(
         }
             ?: cropHint
     }
+
+    private suspend fun Asset.getStream(): InputStream? =
+        suspendCancellableCoroutine { k: CancellableContinuation<InputStream?> ->
+            if (this is StreamableAsset) {
+                fetchInputStream { k.resumeWith(Result.success(it)) }
+            } else {
+                k.resumeWith(Result.success(null))
+            }
+        }
 
     companion object {
         private const val TAG = "WallpaperClientImpl"
