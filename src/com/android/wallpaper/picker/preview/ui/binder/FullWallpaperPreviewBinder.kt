@@ -16,6 +16,7 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
+import android.graphics.Point
 import android.graphics.Rect
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
@@ -23,6 +24,7 @@ import android.view.SurfaceView
 import android.view.View
 import android.widget.ImageView
 import androidx.cardview.widget.CardView
+import androidx.core.view.doOnLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -40,6 +42,7 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewMod
 import com.android.wallpaper.util.DisplayUtils
 import com.android.wallpaper.util.WallpaperCropUtils
 import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
+import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils.shouldEnforceSingleEngine
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import java.lang.Integer.min
 import kotlin.math.max
@@ -75,82 +78,131 @@ object FullWallpaperPreviewBinder {
         val surfaceView: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val surfaceTouchForwardingLayout: TouchForwardingLayout =
             view.requireViewById(R.id.touch_forwarding_layout)
-        var job: Job? = null
-        surfaceView.setZOrderMediaOverlay(true)
-        surfaceView.holder.addCallback(
-            object : SurfaceViewUtil.SurfaceCallback {
-                override fun surfaceCreated(holder: SurfaceHolder) {
-                    val surfaceSize = holder.surface.defaultSize
-                    val cropSurfaceSize =
-                        WallpaperCropUtils.calculateCropSurfaceSize(
-                            view.resources,
-                            max(surfaceSize.x, surfaceSize.y),
-                            min(surfaceSize.x, surfaceSize.y),
-                            surfaceSize.x,
-                            surfaceSize.y
-                        )
-                    job =
-                        lifecycleOwner.lifecycleScope.launch {
-                            viewModel.fullWallpaper.collect {
-                                (wallpaper, config, allowUserCropping, whichPreview) ->
-                                if (wallpaper is WallpaperModel.LiveWallpaperModel) {
-                                    WallpaperConnectionUtils.connect(
-                                        applicationContext,
-                                        wallpaper,
-                                        whichPreview,
-                                        config.screen.toFlag(),
-                                        surfaceView,
-                                    )
-                                } else if (wallpaper is WallpaperModel.StaticWallpaperModel) {
-                                    val (lowResImageView, fullResImageView) =
-                                        initStaticPreviewSurface(
-                                            applicationContext,
-                                            surfaceView,
-                                        ) { crop, zoom ->
-                                            viewModel.staticWallpaperPreviewViewModel
-                                                .fullPreviewCropModels[config.displaySize] =
-                                                FullPreviewCropModel(
-                                                    cropHint = crop,
-                                                    cropSizeModel =
-                                                        CropSizeModel(
-                                                            wallpaperZoom = zoom,
-                                                            hostViewSize = surfaceSize,
-                                                            cropSurfaceSize = cropSurfaceSize,
-                                                        ),
-                                                )
-                                        }
 
-                                    // We do not allow users to pinch to crop if it is a
-                                    // downloadable wallpaper.
-                                    if (allowUserCropping) {
-                                        surfaceTouchForwardingLayout.initTouchForwarding(
-                                            fullResImageView
-                                        )
-                                    }
+        var surfaceCallback: SurfaceViewUtil.SurfaceCallback? = null
+        lifecycleOwner.lifecycleScope.launch {
+            lifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
+                surfaceCallback =
+                    bindSurface(
+                        applicationContext = applicationContext,
+                        surfaceView = surfaceView,
+                        surfaceTouchForwardingLayout = surfaceTouchForwardingLayout,
+                        viewModel = viewModel,
+                        lifecycleOwner = lifecycleOwner,
+                    )
+                surfaceView.setZOrderMediaOverlay(true)
+                surfaceView.holder.addCallback(surfaceCallback)
+            }
+            // When OnDestroy, release the surface
+            surfaceCallback?.let {
+                surfaceView.holder.removeCallback(it)
+                surfaceCallback = null
+            }
+        }
+    }
 
-                                    // Bind static wallpaper
-                                    StaticWallpaperPreviewBinder.bind(
-                                        lowResImageView,
-                                        fullResImageView,
-                                        viewModel.staticWallpaperPreviewViewModel,
+    /**
+     * Create a surface callback that binds the surface when surface created. Note that we return
+     * the surface callback reference so that we can remove the callback from the surface when the
+     * screen is destroyed.
+     */
+    private fun bindSurface(
+        applicationContext: Context,
+        surfaceView: SurfaceView,
+        surfaceTouchForwardingLayout: TouchForwardingLayout,
+        viewModel: WallpaperPreviewViewModel,
+        lifecycleOwner: LifecycleOwner,
+    ): SurfaceViewUtil.SurfaceCallback {
+        return object : SurfaceViewUtil.SurfaceCallback {
+
+            var job: Job? = null
+
+            override fun surfaceCreated(holder: SurfaceHolder) {
+                job =
+                    lifecycleOwner.lifecycleScope.launch {
+                        viewModel.fullWallpaper.collect {
+                            (wallpaper, config, allowUserCropping, whichPreview) ->
+                            if (wallpaper is WallpaperModel.LiveWallpaperModel) {
+                                WallpaperConnectionUtils.connect(
+                                    applicationContext,
+                                    wallpaper,
+                                    whichPreview,
+                                    config.screen.toFlag(),
+                                    surfaceView,
+                                    WallpaperConnectionUtils.EngineRenderingConfig(
+                                        wallpaper.shouldEnforceSingleEngine(),
+                                        config.deviceDisplayType,
+                                        viewModel.smallerDisplaySize,
                                         config.displaySize,
-                                        lifecycleOwner,
+                                    )
+                                )
+                            } else if (wallpaper is WallpaperModel.StaticWallpaperModel) {
+                                val preview =
+                                    LayoutInflater.from(applicationContext)
+                                        .inflate(R.layout.fullscreen_wallpaper_preview, null)
+                                surfaceView.attachView(preview)
+                                val fullResImageView =
+                                    preview.requireViewById<SubsamplingScaleImageView>(
+                                        R.id.full_res_image
+                                    )
+                                fullResImageView.doOnLayout {
+                                    val imageSize =
+                                        Point(fullResImageView.width, fullResImageView.height)
+                                    val cropImageSize =
+                                        WallpaperCropUtils.calculateCropSurfaceSize(
+                                            applicationContext.resources,
+                                            max(imageSize.x, imageSize.y),
+                                            min(imageSize.x, imageSize.y),
+                                            imageSize.x,
+                                            imageSize.y
+                                        )
+                                    fullResImageView.setOnNewCropListener { crop, zoom ->
+                                        viewModel.staticWallpaperPreviewViewModel
+                                            .fullPreviewCropModels[config.displaySize] =
+                                            FullPreviewCropModel(
+                                                cropHint = crop,
+                                                cropSizeModel =
+                                                    CropSizeModel(
+                                                        wallpaperZoom = zoom,
+                                                        hostViewSize = imageSize,
+                                                        cropViewSize = cropImageSize,
+                                                    ),
+                                            )
+                                    }
+                                }
+                                val lowResImageView =
+                                    preview.requireViewById<ImageView>(R.id.low_res_image)
+
+                                // We do not allow users to pinch to crop if it is a
+                                // downloadable wallpaper.
+                                if (allowUserCropping) {
+                                    surfaceTouchForwardingLayout.initTouchForwarding(
+                                        fullResImageView
                                     )
                                 }
+
+                                // Bind static wallpaper
+                                StaticWallpaperPreviewBinder.bind(
+                                    lowResImageView,
+                                    fullResImageView,
+                                    viewModel.staticWallpaperPreviewViewModel,
+                                    config.displaySize,
+                                    lifecycleOwner,
+                                )
                             }
                         }
-                }
-
-                override fun surfaceDestroyed(holder: SurfaceHolder) {
-                    job?.cancel()
-                    // Note that we disconnect wallpaper connection for live wallpapers in
-                    // WallpaperPreviewActivity's onDestroy().
-                    // This is to reduce multiple times of connecting and disconnecting live
-                    // wallpaper services, when going back and forth small and full preview.
-                }
+                    }
             }
-        )
-        // TODO (b/300979155): Clean up surface when no longer needed, e.g. onDestroyed
+
+            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                job?.cancel()
+                job = null
+                // Note that we disconnect wallpaper connection for live wallpapers in
+                // WallpaperPreviewActivity's onDestroy().
+                // This is to reduce multiple times of connecting and disconnecting live
+                // wallpaper services, when going back and forth small and full preview.
+            }
+        }
     }
 
     private fun initStaticPreviewSurface(

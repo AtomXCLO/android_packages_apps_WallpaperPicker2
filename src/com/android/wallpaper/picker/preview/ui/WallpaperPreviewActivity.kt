@@ -21,6 +21,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.view.Window
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -71,6 +72,7 @@ class WallpaperPreviewActivity :
     private val wallpaperPreviewViewModel: WallpaperPreviewViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
         super.onCreate(savedInstanceState)
         enforcePortraitForHandheldAndFoldedDisplay()
         window.navigationBarColor = Color.TRANSPARENT
@@ -160,7 +162,16 @@ class WallpaperPreviewActivity :
         mainScope.launch {
             liveWallpaperDownloader.cleanup()
             (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
-                WallpaperConnectionUtils.disconnect(appContext, it)
+                WallpaperConnectionUtils.disconnect(
+                    appContext,
+                    it,
+                    wallpaperPreviewViewModel.smallerDisplaySize
+                )
+                WallpaperConnectionUtils.disconnect(
+                    appContext,
+                    it,
+                    wallpaperPreviewViewModel.wallpaperDisplaySize.value
+                )
             }
             effectsRepository.destroy()
         }

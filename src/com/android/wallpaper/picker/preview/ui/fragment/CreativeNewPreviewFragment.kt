@@ -56,6 +56,11 @@ class CreativeNewPreviewFragment : Hilt_CreativeNewPreviewFragment() {
         val view = inflater.inflate(R.layout.fragment_full_preview, container, false)
         setUpToolbar(view)
 
+        wallpaperPreviewViewModel.setDefaultWallpaperPreviewConfigViewModel(
+            deviceDisplayType = displayUtils.getCurrentDisplayType(requireActivity()),
+            displaySize = displayUtils.getRealSize(requireActivity().display),
+        )
+
         FullWallpaperPreviewBinder.bind(
             applicationContext = appContext,
             view = view,
@@ -64,9 +69,6 @@ class CreativeNewPreviewFragment : Hilt_CreativeNewPreviewFragment() {
             lifecycleOwner = viewLifecycleOwner,
         )
 
-        wallpaperPreviewViewModel.setDefaultWallpaperPreviewConfigViewModel(
-            displayUtils.getRealSize(requireActivity().display)
-        )
         view.requireViewById<Toolbar>(R.id.toolbar).isVisible = false
         view.requireViewById<SurfaceView>(R.id.workspace_surface).isVisible = false
         view.requireViewById<Button>(R.id.crop_wallpaper_button).isVisible = false

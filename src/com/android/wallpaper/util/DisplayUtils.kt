@@ -25,6 +25,7 @@ import android.view.DisplayInfo
 import android.view.Surface.ROTATION_270
 import android.view.Surface.ROTATION_90
 import com.android.systemui.shared.recents.utilities.Utilities
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import kotlin.math.min
 
 /**
@@ -151,6 +152,17 @@ class DisplayUtils(private val context: Context) {
         val largestDisplay = getWallpaperDisplay()
         val smallestDisplay = internalDisplays.firstOrNull() { it != largestDisplay }
         return smallestDisplay ?: largestDisplay
+    }
+
+    fun getCurrentDisplayType(activity: Activity): DeviceDisplayType {
+        if (!hasMultiInternalDisplays()) {
+            return DeviceDisplayType.SINGLE
+        }
+        return if (isOnWallpaperDisplay(activity)) {
+            DeviceDisplayType.UNFOLDED
+        } else {
+            DeviceDisplayType.FOLDED
+        }
     }
 
     private fun getRealArea(display: Display): Int {
