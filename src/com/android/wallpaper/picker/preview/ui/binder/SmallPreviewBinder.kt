@@ -20,21 +20,26 @@ import android.graphics.Point
 import android.view.SurfaceView
 import android.view.View
 import androidx.cardview.widget.CardView
+import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.android.wallpaper.R
-import com.android.wallpaper.model.wallpaper.FoldableDisplay
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import kotlinx.coroutines.launch
 
 object SmallPreviewBinder {
-    /** @param foldableDisplay Only used for foldable devices; otherwise, set to null. */
+
     fun bind(
         applicationContext: Context,
         view: View,
         viewModel: WallpaperPreviewViewModel,
         screen: Screen,
         displaySize: Point,
-        foldableDisplay: FoldableDisplay?,
+        deviceDisplayType: DeviceDisplayType,
         viewLifecycleOwner: LifecycleOwner,
         currentNavDestId: Int,
         navigate: ((View) -> Unit)? = null,
@@ -43,19 +48,36 @@ object SmallPreviewBinder {
         val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
 
-        if (R.id.smallPreviewFragment == currentNavDestId) {
-            view.setOnClickListener {
-                viewModel.onSmallPreviewClicked(screen, foldableDisplay)
-                navigate?.invoke(previewCard)
+        viewLifecycleOwner.lifecycleScope.launch {
+            launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
+                    if (R.id.smallPreviewFragment == currentNavDestId) {
+                        view.setOnClickListener {
+                            viewModel.onSmallPreviewClicked(screen, deviceDisplayType)
+                            navigate?.invoke(previewCard)
+                        }
+                    } else if (R.id.setWallpaperDialog == currentNavDestId) {
+                        previewCard.radius =
+                            previewCard.resources.getDimension(
+                                R.dimen.set_wallpaper_dialog_preview_corner_radius
+                            )
+                    }
+                }
+                // Remove on click listener when on destroyed
+                view.setOnClickListener(null)
             }
-        } else if (R.id.setWallpaperDialog == currentNavDestId) {
-            previewCard.radius =
-                previewCard.resources.getDimension(
-                    R.dimen.set_wallpaper_dialog_preview_corner_radius
-                )
+            launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    // SurfaceViews are hidden when exit transition starts in SmallPreviewFragment.
+                    // Ensure they are visible when the fragment starts on the edge case that the
+                    // the fragment resumes after the exit transition.
+                    wallpaperSurface.isVisible = true
+                    workspaceSurface.isVisible = true
+                }
+            }
         }
 
-        val config = viewModel.getWorkspacePreviewConfig(screen, foldableDisplay)
+        val config = viewModel.getWorkspacePreviewConfig(screen, deviceDisplayType)
         WorkspacePreviewBinder.bind(
             workspaceSurface,
             config,
@@ -70,6 +92,7 @@ object SmallPreviewBinder {
             displaySize = displaySize,
             applicationContext = applicationContext,
             viewLifecycleOwner = viewLifecycleOwner,
+            deviceDisplayType = deviceDisplayType,
         )
     }
 }

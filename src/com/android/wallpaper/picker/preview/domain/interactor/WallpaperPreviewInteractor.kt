@@ -41,8 +41,13 @@ constructor(
 ) {
     val wallpaperModel: StateFlow<WallpaperModel?> = wallpaperPreviewRepository.wallpaperModel
 
-    val hasTooltipBeenShown: StateFlow<Boolean> = wallpaperPreviewRepository.hasTooltipBeenShown
-    fun dismissTooltip() = wallpaperPreviewRepository.dismissTooltip()
+    val hasSmallPreviewTooltipBeenShown: StateFlow<Boolean> =
+        wallpaperPreviewRepository.hasSmallPreviewTooltipBeenShown
+    fun hideSmallPreviewTooltip() = wallpaperPreviewRepository.hideSmallPreviewTooltip()
+
+    val hasFullPreviewTooltipBeenShown: StateFlow<Boolean> =
+        wallpaperPreviewRepository.hasFullPreviewTooltipBeenShown
+    fun hideFullPreviewTooltip() = wallpaperPreviewRepository.hideFullPreviewTooltip()
 
     suspend fun setStaticWallpaper(
         @UserEventLogger.SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
