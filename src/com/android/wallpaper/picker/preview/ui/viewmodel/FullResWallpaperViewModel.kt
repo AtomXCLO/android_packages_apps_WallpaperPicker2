@@ -17,12 +17,12 @@ package com.android.wallpaper.picker.preview.ui.viewmodel
 
 import android.graphics.Bitmap
 import android.graphics.Point
-import android.graphics.Rect
-import java.io.InputStream
+import com.android.wallpaper.asset.Asset
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 
 data class FullResWallpaperViewModel(
     val rawWallpaperBitmap: Bitmap,
     val rawWallpaperSize: Point,
-    val cropHints: Map<Point, Rect>?,
-    val stream: InputStream?,
+    val asset: Asset,
+    val fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
 )

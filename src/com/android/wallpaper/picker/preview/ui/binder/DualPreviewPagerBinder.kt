@@ -16,19 +16,17 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Context
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
+import android.view.View.OVER_SCROLL_NEVER
 import androidx.lifecycle.LifecycleOwner
 import com.android.wallpaper.R
-import com.android.wallpaper.model.wallpaper.FoldableDisplay
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.model.wallpaper.PreviewPagerPage
 import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.DualPreviewViewPager
 import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters.DualPreviewPagerAdapter
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import kotlinx.coroutines.CoroutineScope
 
 /** Binds dual preview home screen and lock screen view pager. */
 object DualPreviewPagerBinder {
@@ -38,53 +36,47 @@ object DualPreviewPagerBinder {
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
-        mainScope: CoroutineScope,
         currentNavDestId: Int,
         navigate: (View) -> Unit,
     ) {
         // implement adapter for the dual preview pager
         dualPreviewView.adapter = DualPreviewPagerAdapter { view, position ->
-            if (wallpaperPreviewViewModel.shouldShowTooltipWorkflow()) {
-                val inflater =
-                    applicationContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE)
-                        as LayoutInflater
-                inflater.inflate(R.layout.tooltip_small_preview, view as ViewGroup)
-                val tooltip = view.requireViewById<View>(R.id.tooltip)
-                PreviewTooltipBinder.bind(
-                    view = tooltip,
-                    viewModel = wallpaperPreviewViewModel,
-                    lifecycleOwner = viewLifecycleOwner,
-                )
-            }
+            PreviewTooltipBinder.bindSmallPreviewTooltip(
+                tooltipStub = view.requireViewById(R.id.tooltip_stub),
+                viewModel = wallpaperPreviewViewModel.smallTooltipViewModel,
+                lifecycleOwner = viewLifecycleOwner,
+            )
 
             val dualDisplayAspectRatioLayout: DualDisplayAspectRatioLayout =
                 view.requireViewById(R.id.dual_preview)
 
             val displaySizes =
                 mapOf(
-                    FoldableDisplay.FOLDED to wallpaperPreviewViewModel.smallerDisplaySize,
-                    FoldableDisplay.UNFOLDED to wallpaperPreviewViewModel.wallpaperDisplaySize,
+                    DeviceDisplayType.FOLDED to wallpaperPreviewViewModel.smallerDisplaySize,
+                    DeviceDisplayType.UNFOLDED to
+                        wallpaperPreviewViewModel.wallpaperDisplaySize.value,
                 )
             dualDisplayAspectRatioLayout.setDisplaySizes(displaySizes)
             dualPreviewView.setDisplaySizes(displaySizes)
 
-            FoldableDisplay.entries.forEach { display ->
+            DeviceDisplayType.FOLDABLE_DISPLAY_TYPES.forEach { display ->
                 val previewDisplaySize = dualDisplayAspectRatioLayout.getPreviewDisplaySize(display)
                 previewDisplaySize?.let {
                     SmallPreviewBinder.bind(
                         applicationContext = applicationContext,
                         view = dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
                         viewModel = wallpaperPreviewViewModel,
-                        mainScope = mainScope,
                         viewLifecycleOwner = viewLifecycleOwner,
                         screen = PreviewPagerPage.entries[position].screen,
                         displaySize = it,
-                        foldableDisplay = display,
+                        deviceDisplayType = display,
                         currentNavDestId = currentNavDestId,
                         navigate = navigate,
                     )
                 }
             }
+
+            dualPreviewView.overScrollMode = OVER_SCROLL_NEVER
         }
     }
 }

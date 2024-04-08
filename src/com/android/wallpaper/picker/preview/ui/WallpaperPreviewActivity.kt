@@ -18,19 +18,25 @@ package com.android.wallpaper.picker.preview.ui
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
+import android.view.Window
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavController
+import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import com.android.wallpaper.R
+import com.android.wallpaper.model.ImageWallpaperInfo
 import com.android.wallpaper.model.WallpaperInfo
 import com.android.wallpaper.picker.AppbarFragment
 import com.android.wallpaper.picker.BasePreviewActivity
 import com.android.wallpaper.picker.data.WallpaperModel
+import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.data.repository.EffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
@@ -46,8 +52,8 @@ import com.android.wallpaper.util.wallpaperconnection.WallpaperConnectionUtils
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /** This activity holds the flow for the preview screen. */
 @AndroidEntryPoint(BasePreviewActivity::class)
@@ -59,14 +65,23 @@ class WallpaperPreviewActivity :
     @Inject lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
     @Inject lateinit var effectsRepository: EffectsRepository
     @Inject lateinit var liveWallpaperDownloader: LiveWallpaperDownloader
+    @MainDispatcher @Inject lateinit var mainScope: CoroutineScope
+
+    private lateinit var navController: NavController
 
     private val wallpaperPreviewViewModel: WallpaperPreviewViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
         super.onCreate(savedInstanceState)
+        enforcePortraitForHandheldAndFoldedDisplay()
         window.navigationBarColor = Color.TRANSPARENT
         window.statusBarColor = Color.TRANSPARENT
         setContentView(R.layout.activity_wallpaper_preview)
+        navController =
+            (supportFragmentManager.findFragmentById(R.id.wallpaper_preview_nav_host)
+                    as NavHostFragment)
+                .navController
         // Fits screen to navbar and statusbar
         WindowCompat.setDecorFitsSystemWindows(window, ActivityUtils.isSUWMode(this))
         val isAssetIdPresent = intent.getBooleanExtra(IS_ASSET_ID_PRESENT, false)
@@ -110,10 +125,6 @@ class WallpaperPreviewActivity :
         if (liveWallpaperModel != null && liveWallpaperModel.isNewCreativeWallpaper()) {
             // If it's a new creative wallpaper, override the start destination to the fullscreen
             // fragment for the create-new flow of creative wallpapers
-            val navController =
-                (supportFragmentManager.findFragmentById(R.id.wallpaper_preview_nav_host)
-                        as NavHostFragment)
-                    .navController
             val navGraph =
                 navController.navInflater.inflate(R.navigation.wallpaper_preview_nav_graph)
             navGraph.setStartDestination(R.id.creativeNewPreviewFragment)
@@ -139,9 +150,6 @@ class WallpaperPreviewActivity :
 
     override fun onResume() {
         super.onResume()
-        requestedOrientation =
-            if (displayUtils.isOnWallpaperDisplay(this)) ActivityInfo.SCREEN_ORIENTATION_USER
-            else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         if (isInMultiWindowMode) {
             Toast.makeText(this, R.string.wallpaper_exit_split_screen, Toast.LENGTH_SHORT).show()
             onBackPressedDispatcher.onBackPressed()
@@ -149,12 +157,46 @@ class WallpaperPreviewActivity :
     }
 
     override fun onDestroy() {
-        liveWallpaperDownloader.cleanup()
-        (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
-            runBlocking { WallpaperConnectionUtils.disconnect(applicationContext, it) }
+        // TODO(b/328302105): MainScope ensures the job gets done non-blocking even if the activity
+        //  has been destroyed already. Consider making this part of WallpaperConnectionUtils.
+        mainScope.launch {
+            liveWallpaperDownloader.cleanup()
+            (wallpaperPreviewViewModel.wallpaper.value as? WallpaperModel.LiveWallpaperModel)?.let {
+                WallpaperConnectionUtils.disconnect(
+                    appContext,
+                    it,
+                    wallpaperPreviewViewModel.smallerDisplaySize
+                )
+                WallpaperConnectionUtils.disconnect(
+                    appContext,
+                    it,
+                    wallpaperPreviewViewModel.wallpaperDisplaySize.value
+                )
+            }
+            effectsRepository.destroy()
         }
-        effectsRepository.destroy()
         super.onDestroy()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+
+        wallpaperPreviewViewModel.updateDisplayConfiguration()
+        // Restart current navigation destination
+        navController.apply {
+            currentDestination?.id?.let {
+                navigate(
+                    resId = it,
+                    args = null,
+                    navOptions =
+                        NavOptions.Builder()
+                            .setPopUpTo(destinationId = it, inclusive = true)
+                            .build(),
+                )
+            }
+        }
+
+        enforcePortraitForHandheldAndFoldedDisplay()
     }
 
     private fun WallpaperInfo.convertToWallpaperModel(): WallpaperModel {
@@ -187,6 +229,55 @@ class WallpaperPreviewActivity :
             intent.putExtra(EXTRA_VIEW_AS_HOME, isViewAsHome)
             intent.putExtra(IS_NEW_TASK, isNewTask)
             return intent
+        }
+
+        /**
+         * Returns a new [Intent] that can be used to start [WallpaperPreviewActivity], explicitly
+         * propagating any permissions on the wallpaper data to the new [Intent].
+         *
+         * @param context application context.
+         * @param wallpaperInfo selected by user for editing preview.
+         * @param isNewTask true to launch at a new task.
+         *
+         * TODO(b/291761856): Use wallpaper model to replace wallpaper info.
+         */
+        fun newIntent(
+            context: Context,
+            originalIntent: Intent,
+            isAssetIdPresent: Boolean,
+            isViewAsHome: Boolean = false,
+            isNewTask: Boolean = false,
+        ): Intent {
+            val data = originalIntent.data
+            val intent =
+                newIntent(
+                    context,
+                    ImageWallpaperInfo(data),
+                    isAssetIdPresent,
+                    isViewAsHome,
+                    isNewTask
+                )
+            // Both these lines are required for permission propagation
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.setData(data)
+            return intent
+        }
+    }
+
+    /**
+     * If the display is a handheld display or a folded display from a foldable, we enforce the
+     * activity to be portrait.
+     *
+     * This method should be called upon initialization of this activity, and whenever there is a
+     * configuration change.
+     */
+    private fun enforcePortraitForHandheldAndFoldedDisplay() {
+        val wantedOrientation =
+            if (displayUtils.isLargeScreenOrUnfoldedDisplay(this))
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        if (requestedOrientation != wantedOrientation) {
+            requestedOrientation = wantedOrientation
         }
     }
 }

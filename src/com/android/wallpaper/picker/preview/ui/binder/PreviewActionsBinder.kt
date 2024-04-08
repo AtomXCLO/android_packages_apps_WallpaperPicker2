@@ -16,12 +16,14 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Intent
+import android.graphics.Point
 import android.net.Uri
 import android.view.View
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionFloatingSheet
 import com.android.wallpaper.picker.preview.ui.view.PreviewActionGroup
@@ -37,6 +39,7 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewActionsViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HIDDEN
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Binds the action buttons and bottom sheet to [PreviewActionsViewModel] */
@@ -46,6 +49,8 @@ object PreviewActionsBinder {
         floatingSheet: PreviewActionFloatingSheet,
         previewViewModel: WallpaperPreviewViewModel,
         actionsViewModel: PreviewActionsViewModel,
+        deviceDisplayType: DeviceDisplayType,
+        displaySize: Point,
         lifecycleOwner: LifecycleOwner,
         logger: UserEventLogger,
         onStartEditActivity: (intent: Intent) -> Unit,
@@ -88,30 +93,6 @@ object PreviewActionsBinder {
                 launch {
                     actionsViewModel.onInformationClicked.collect {
                         actionGroup.setClickListener(INFORMATION, it)
-                    }
-                }
-
-                launch {
-                    actionsViewModel.informationFloatingSheetViewModel.collect { viewModel ->
-                        if (viewModel == null) {
-                            floatingSheet.collapse()
-                        } else {
-                            val onExploreButtonClicked =
-                                viewModel.exploreActionUrl?.let { url ->
-                                    {
-                                        logger.logWallpaperExploreButtonClicked()
-                                        val appContext = floatingSheet.context.applicationContext
-                                        appContext.startActivity(
-                                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                        )
-                                    }
-                                }
-                            floatingSheet.setInformationContent(
-                                viewModel.attributions,
-                                onExploreButtonClicked
-                            )
-                            floatingSheet.expand()
-                        }
                     }
                 }
 
@@ -185,7 +166,10 @@ object PreviewActionsBinder {
                                 {
                                     // We need to set default wallpaper preview config view model
                                     // before entering full screen with edit activity overlay.
-                                    previewViewModel.setDefaultWallpaperPreviewConfigViewModel()
+                                    previewViewModel.setDefaultWallpaperPreviewConfigViewModel(
+                                        deviceDisplayType,
+                                        displaySize,
+                                    )
                                     onStartEditActivity.invoke(it)
                                 }
                             } else null
@@ -231,28 +215,6 @@ object PreviewActionsBinder {
                     }
                 }
 
-                launch {
-                    actionsViewModel.effectFloatingSheetViewModel.collect { viewModel ->
-                        if (viewModel == null) {
-                            floatingSheet.collapse()
-                        } else {
-                            floatingSheet.setEffectContent(
-                                viewModel.effectType,
-                                viewModel.myPhotosClickListener,
-                                viewModel.collapseFloatingSheetListener,
-                                viewModel.effectSwitchListener,
-                                viewModel.effectDownloadClickListener,
-                                viewModel.status,
-                                viewModel.resultCode,
-                                viewModel.errorMessage,
-                                viewModel.title,
-                                viewModel.effectTextRes,
-                            )
-                            floatingSheet.expand()
-                        }
-                    }
-                }
-
                 /** [SHARE] */
                 launch {
                     actionsViewModel.isShareVisible.collect { actionGroup.setIsVisible(SHARE, it) }
@@ -267,6 +229,52 @@ object PreviewActionsBinder {
                             } else null
                         )
                     }
+                }
+
+                /** Floating sheet behavior */
+                launch {
+                    combine(
+                            actionsViewModel.informationFloatingSheetViewModel,
+                            actionsViewModel.effectFloatingSheetViewModel
+                        ) { informationViewModel, effectViewModel ->
+                            informationViewModel to effectViewModel
+                        }
+                        .collect { (informationViewModel, effectViewModel) ->
+                            when {
+                                informationViewModel != null -> {
+                                    val onExploreButtonClicked =
+                                        informationViewModel.exploreActionUrl?.let { url ->
+                                            {
+                                                logger.logWallpaperExploreButtonClicked()
+                                                floatingSheet.context.startActivity(
+                                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                )
+                                            }
+                                        }
+                                    floatingSheet.setInformationContent(
+                                        informationViewModel.attributions,
+                                        onExploreButtonClicked
+                                    )
+                                    floatingSheet.expand()
+                                }
+                                effectViewModel != null -> {
+                                    floatingSheet.setEffectContent(
+                                        effectViewModel.effectType,
+                                        effectViewModel.myPhotosClickListener,
+                                        effectViewModel.collapseFloatingSheetListener,
+                                        effectViewModel.effectSwitchListener,
+                                        effectViewModel.effectDownloadClickListener,
+                                        effectViewModel.status,
+                                        effectViewModel.resultCode,
+                                        effectViewModel.errorMessage,
+                                        effectViewModel.title,
+                                        effectViewModel.effectTextRes,
+                                    )
+                                    floatingSheet.expand()
+                                }
+                                else -> floatingSheet.collapse()
+                            }
+                        }
                 }
             }
         }

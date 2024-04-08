@@ -18,18 +18,16 @@ package com.android.wallpaper.picker.preview.ui.binder
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Point
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.android.wallpaper.R
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.model.wallpaper.PreviewPagerPage
 import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters.SinglePreviewPagerAdapter
 import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.pagetransformers.PreviewCardPageTransformer
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
-import kotlinx.coroutines.CoroutineScope
 
 /** Binds single preview home screen and lock screen tabs view pager. */
 object PreviewPagerBinder {
@@ -38,7 +36,6 @@ object PreviewPagerBinder {
     fun bind(
         applicationContext: Context,
         viewLifecycleOwner: LifecycleOwner,
-        mainScope: CoroutineScope,
         previewsViewPager: ViewPager2,
         wallpaperPreviewViewModel: WallpaperPreviewViewModel,
         previewDisplaySize: Point,
@@ -47,19 +44,11 @@ object PreviewPagerBinder {
     ) {
         previewsViewPager.apply {
             adapter = SinglePreviewPagerAdapter { viewHolder, position ->
-                if (wallpaperPreviewViewModel.shouldShowTooltipWorkflow()) {
-                    val inflater =
-                        applicationContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE)
-                            as LayoutInflater
-                    val parentView = viewHolder.itemView as ViewGroup
-                    inflater.inflate(R.layout.tooltip_small_preview, parentView)
-                    val tooltip = parentView.requireViewById<View>(R.id.tooltip)
-                    PreviewTooltipBinder.bind(
-                        view = tooltip,
-                        viewModel = wallpaperPreviewViewModel,
-                        lifecycleOwner = viewLifecycleOwner,
-                    )
-                }
+                PreviewTooltipBinder.bindSmallPreviewTooltip(
+                    tooltipStub = viewHolder.itemView.requireViewById(R.id.tooltip_stub),
+                    viewModel = wallpaperPreviewViewModel.smallTooltipViewModel,
+                    lifecycleOwner = viewLifecycleOwner,
+                )
 
                 SmallPreviewBinder.bind(
                     applicationContext = applicationContext,
@@ -67,8 +56,7 @@ object PreviewPagerBinder {
                     viewModel = wallpaperPreviewViewModel,
                     screen = PreviewPagerPage.entries[position].screen,
                     displaySize = previewDisplaySize,
-                    foldableDisplay = null,
-                    mainScope = mainScope,
+                    deviceDisplayType = DeviceDisplayType.SINGLE,
                     viewLifecycleOwner = viewLifecycleOwner,
                     currentNavDestId = currentNavDestId,
                     navigate = navigate,

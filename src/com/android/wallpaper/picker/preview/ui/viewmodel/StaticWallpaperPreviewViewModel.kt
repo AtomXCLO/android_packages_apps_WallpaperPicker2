@@ -23,27 +23,29 @@ import android.graphics.ColorSpace
 import android.graphics.Point
 import android.graphics.Rect
 import com.android.wallpaper.asset.Asset
-import com.android.wallpaper.asset.StreamableAsset
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.picker.customization.shared.model.WallpaperColorsModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.di.modules.BackgroundDispatcher
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import com.android.wallpaper.picker.preview.ui.WallpaperPreviewActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ViewModelScoped
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import javax.inject.Inject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** View model for static wallpaper preview used in [WallpaperPreviewActivity] and its fragments */
@@ -51,15 +53,34 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 class StaticWallpaperPreviewViewModel
 @Inject
 constructor(
-    private val interactor: WallpaperPreviewInteractor,
+    interactor: WallpaperPreviewInteractor,
     @ApplicationContext private val context: Context,
     private val wallpaperPreferences: WallpaperPreferences,
     @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
+    viewModelScope: CoroutineScope,
 ) {
-    /** The state of static wallpaper crop in full preview, before user confirmation. */
-    var fullPreviewCrop: Rect? = null
+    /**
+     * The state of static wallpaper crop in full preview, before user confirmation.
+     *
+     * The initial value should be the default crop on small preview, which could be the cropHints
+     * for current wallpaper or default crop area for a new wallpaper.
+     */
+    val fullPreviewCropModels: MutableMap<Point, FullPreviewCropModel> = mutableMapOf()
 
-    private val cropHints: MutableStateFlow<Map<Point, Rect>?> = MutableStateFlow(null)
+    /**
+     * The info picker needs to post process crops for setting static wallpaper.
+     *
+     * It will be filled with current cropHints when previewing current wallpaper, and null when
+     * previewing a new wallpaper, and gets updated through [updateCropHintsInfo] when user picks a
+     * new crop.
+     */
+    private val cropHintsInfo: MutableStateFlow<Map<Point, FullPreviewCropModel>?> =
+        MutableStateFlow(null)
+
+    private val cropHints: Flow<Map<Point, Rect>?> =
+        cropHintsInfo.map { cropHintsInfoMap ->
+            cropHintsInfoMap?.map { entry -> entry.key to entry.value.cropHint }?.toMap()
+        }
 
     val staticWallpaperModel: Flow<StaticWallpaperModel> =
         interactor.wallpaperModel.map { it as? StaticWallpaperModel }.filterNotNull()
@@ -68,8 +89,8 @@ constructor(
             .map { it.staticWallpaperData.asset.getLowResBitmap(context) }
             .filterNotNull()
             .flowOn(bgDispatcher)
-    // Asset detail includes the dimensions, bitmap and input stream decoded from the asset.
-    private val assetDetail: Flow<Triple<Point, Bitmap?, InputStream?>?> =
+    // Asset detail includes the dimensions, bitmap and the asset.
+    private val assetDetail: Flow<Triple<Point, Bitmap?, Asset>?> =
         interactor.wallpaperModel
             .map { (it as? StaticWallpaperModel)?.staticWallpaperData?.asset }
             .map {
@@ -78,34 +99,66 @@ constructor(
                 } else {
                     val dimensions = it.decodeRawDimensions()
                     val bitmap = it.decodeBitmap(dimensions)
-                    val stream = it.getStream()
-                    Triple(dimensions, bitmap, stream)
+                    Triple(dimensions, bitmap, it)
                 }
             }
             .flowOn(bgDispatcher)
+            // We only want to decode bitmap every time when wallpaper model is updated, instead of
+            // a new subscriber listens to this flow. So we need to use shareIn.
+            .shareIn(viewModelScope, SharingStarted.Lazily, 1)
+
     val fullResWallpaperViewModel: Flow<FullResWallpaperViewModel?> =
-        combine(assetDetail, cropHints) { assetDetail, cropHints ->
+        combine(assetDetail, cropHintsInfo) { assetDetail, cropHintsInfo ->
                 if (assetDetail == null) {
                     null
                 } else {
-                    val (dimensions, bitmap, stream) = assetDetail
-                    bitmap?.let { FullResWallpaperViewModel(bitmap, dimensions, cropHints, stream) }
+                    val (dimensions, bitmap, asset) = assetDetail
+                    bitmap?.let {
+                        FullResWallpaperViewModel(
+                            bitmap,
+                            dimensions,
+                            asset,
+                            cropHintsInfo,
+                        )
+                    }
                 }
             }
             .flowOn(bgDispatcher)
     val subsamplingScaleImageViewModel: Flow<FullResWallpaperViewModel> =
         fullResWallpaperViewModel.filterNotNull()
-    val wallpaperColors: Flow<WallpaperColorsModel> =
+    // TODO (b/315856338): cache wallpaper colors in preferences
+    private val storedWallpaperColors: Flow<WallpaperColors?> =
         staticWallpaperModel
-            .map {
-                WallpaperColorsModel.Loaded(
-                    wallpaperPreferences.getWallpaperColors(it.commonWallpaperData.id.uniqueId)
-                )
-            }
+            .map { wallpaperPreferences.getWallpaperColors(it.commonWallpaperData.id.uniqueId) }
             .distinctUntilChanged()
+    val wallpaperColors: Flow<WallpaperColorsModel> =
+        combine(storedWallpaperColors, subsamplingScaleImageViewModel, cropHints) {
+            storedColors,
+            wallpaperViewModel,
+            cropHints ->
+            WallpaperColorsModel.Loaded(
+                if (cropHints == null) {
+                    storedColors
+                        ?: interactor.getWallpaperColors(
+                            wallpaperViewModel.rawWallpaperBitmap,
+                            null
+                        )
+                } else {
+                    interactor.getWallpaperColors(wallpaperViewModel.rawWallpaperBitmap, cropHints)
+                }
+            )
+        }
 
-    fun updateCropHints(cropHints: Map<Point, Rect>) {
-        this.cropHints.value = this.cropHints.value?.plus(cropHints) ?: cropHints
+    /**
+     * Updates new cropHints per displaySize that's been confirmed by the user.
+     *
+     * That's when picker gets current cropHints from [WallpaperManager] or when user crops and
+     * confirms a crop.
+     */
+    fun updateCropHintsInfo(cropHintsInfo: Map<Point, FullPreviewCropModel>) {
+        val newInfo = this.cropHintsInfo.value?.plus(cropHintsInfo) ?: cropHintsInfo
+        this.cropHintsInfo.value = newInfo
+        fullPreviewCropModels.putAll(newInfo)
     }
 
     // TODO b/296288298 Create a util class for Bitmap and Asset
@@ -120,16 +173,7 @@ constructor(
     private suspend fun Asset.decodeBitmap(dimensions: Point): Bitmap? =
         suspendCancellableCoroutine { k: CancellableContinuation<Bitmap?> ->
             val callback = Asset.BitmapReceiver { k.resumeWith(Result.success(it)) }
-            decodeBitmap(dimensions.x, dimensions.y, false, callback)
-        }
-
-    private suspend fun Asset.getStream(): InputStream? =
-        suspendCancellableCoroutine { k: CancellableContinuation<InputStream?> ->
-            if (this is StreamableAsset) {
-                fetchInputStream { k.resumeWith(Result.success(it)) }
-            } else {
-                k.resumeWith(Result.success(null))
-            }
+            decodeBitmap(dimensions.x, dimensions.y, /* hardwareBitmapAllowed= */ false, callback)
         }
 
     // TODO b/296288298 Create a util class functions for Bitmap and Asset
@@ -152,5 +196,24 @@ constructor(
             cropped.recycle()
         }
         return colors
+    }
+
+    class Factory
+    @Inject
+    constructor(
+        private val interactor: WallpaperPreviewInteractor,
+        @ApplicationContext private val context: Context,
+        private val wallpaperPreferences: WallpaperPreferences,
+        @BackgroundDispatcher private val bgDispatcher: CoroutineDispatcher,
+    ) {
+        fun create(viewModelScope: CoroutineScope): StaticWallpaperPreviewViewModel {
+            return StaticWallpaperPreviewViewModel(
+                interactor = interactor,
+                context = context,
+                wallpaperPreferences = wallpaperPreferences,
+                bgDispatcher = bgDispatcher,
+                viewModelScope = viewModelScope,
+            )
+        }
     }
 }

@@ -31,7 +31,6 @@ import com.android.wallpaper.module.WallpaperPreferences.PendingWallpaperSetStat
 import com.android.wallpaper.module.WallpaperPreferences.PresentationMode
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.data.WallpaperModel
-import com.google.common.collect.ImmutableMap
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -85,9 +84,8 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
     private var mLockLiveWallpaperPrefMetadata: LiveWallpaperPrefMetadata? = null
     private val mWallStoredColor: HashMap<String, String> = HashMap()
 
-    private val wallpaperCropHints: MutableMap<Point, Rect?>
-
-    private var hasPreviewTooltipBeenShown = true
+    private var hasSmallPreviewTooltipBeenShown = false
+    private var hasFullPreviewTooltipBeenShown = false
 
     init {
         wallpaperPresentationMode = WallpaperPreferences.PRESENTATION_MODE_STATIC
@@ -98,7 +96,6 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
         lastDailyLogTimestamp = -1
         lastDailyWallpaperRotationStatus = -1
         mPendingWallpaperSetStatus = WallpaperPreferences.WALLPAPER_SET_NOT_PENDING
-        wallpaperCropHints = mutableMapOf()
     }
 
     override fun getWallpaperPresentationMode(): Int {
@@ -481,7 +478,7 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
         destination: WallpaperDestination,
         wallpaperModel: WallpaperModel.StaticWallpaperModel,
         bitmap: Bitmap,
-        cropHints: Map<Point, Rect?>
+        cropHints: Map<Point, Rect>?,
     ) {}
 
     override suspend fun addLiveWallpaperToRecentWallpapers(
@@ -489,20 +486,20 @@ open class TestWallpaperPreferences @Inject constructor() : WallpaperPreferences
         wallpaperModel: WallpaperModel.LiveWallpaperModel
     ) {}
 
-    override fun getWallpaperCropHints(): Map<Point, Rect?> {
-        return ImmutableMap.copyOf(wallpaperCropHints)
+    override fun setHasSmallPreviewTooltipBeenShown(hasTooltipBeenShown: Boolean) {
+        this.hasSmallPreviewTooltipBeenShown = hasTooltipBeenShown
     }
 
-    override fun storeWallpaperCropHints(cropHints: Map<Point, Rect?>) {
-        wallpaperCropHints.putAll(cropHints)
+    override fun getHasSmallPreviewTooltipBeenShown(): Boolean {
+        return hasSmallPreviewTooltipBeenShown
     }
 
-    override fun setHasPreviewTooltipBeenShown(hasTooltipBeenShown: Boolean) {
-        this.hasPreviewTooltipBeenShown = hasTooltipBeenShown
+    override fun setHasFullPreviewTooltipBeenShown(hasTooltipBeenShown: Boolean) {
+        this.hasFullPreviewTooltipBeenShown = hasTooltipBeenShown
     }
 
-    override fun getHasPreviewTooltipBeenShown(): Boolean {
-        return hasPreviewTooltipBeenShown
+    override fun getHasFullPreviewTooltipBeenShown(): Boolean {
+        return hasFullPreviewTooltipBeenShown
     }
 
     private fun setAppLaunchCount(count: Int) {

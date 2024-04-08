@@ -17,16 +17,18 @@
 
 package com.android.wallpaper.picker.customization.data.content
 
+import android.app.WallpaperColors
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.Point
 import android.graphics.Rect
+import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.module.logging.UserEventLogger.SetWallpaperEntryPoint
 import com.android.wallpaper.picker.customization.shared.model.WallpaperDestination
 import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
-import java.io.InputStream
+import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
 import kotlinx.coroutines.flow.Flow
 
 /** Defines interface for classes that can interact with the Wallpaper API. */
@@ -46,16 +48,18 @@ interface WallpaperClient {
      * @param wallpaperModel The wallpaper model of the wallpaper.
      * @param bitmap The bitmap of the static wallpaper. Note that the bitmap should be the
      *   original, full-size bitmap.
-     * @param cropHints The crop hints that indicate how the wallpaper should be cropped and render
-     *   on the designated screen and orientation.
+     * @param wallpaperSize raw wallpaper size.
+     * @param asset wallpaper asset.
+     * @param fullPreviewCropModels full preview crop info for each dimension that user has cropped.
      */
     suspend fun setStaticWallpaper(
         @SetWallpaperEntryPoint setWallpaperEntryPoint: Int,
         destination: WallpaperDestination,
         wallpaperModel: StaticWallpaperModel,
-        inputStream: InputStream?,
         bitmap: Bitmap,
-        cropHints: Map<Point, Rect>,
+        wallpaperSize: Point,
+        asset: Asset,
+        fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     )
 
     /**
@@ -94,7 +98,10 @@ interface WallpaperClient {
     fun areRecentsAvailable(): Boolean
 
     fun getCurrentCropHints(
-        displaySizes: MutableList<Point>,
+        displaySizes: List<Point>,
         @WallpaperManager.SetWallpaperFlags which: Int
     ): Map<Point, Rect>?
+
+    /** Returns the wallpaper colors for preview a bitmap with a set of crop hints */
+    suspend fun getWallpaperColors(bitmap: Bitmap, cropHints: Map<Point, Rect>?): WallpaperColors?
 }
