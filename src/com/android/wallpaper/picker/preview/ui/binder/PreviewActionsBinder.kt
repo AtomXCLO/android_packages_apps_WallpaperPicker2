@@ -16,7 +16,6 @@
 package com.android.wallpaper.picker.preview.ui.binder
 
 import android.content.Intent
-import android.graphics.Point
 import android.net.Uri
 import android.view.View
 import androidx.lifecycle.Lifecycle
@@ -37,9 +36,9 @@ import com.android.wallpaper.picker.preview.ui.viewmodel.Action.SHARE
 import com.android.wallpaper.picker.preview.ui.viewmodel.DeleteConfirmationDialogViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.PreviewActionsViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.widget.floatingsheetcontent.WallpaperActionsToggleAdapter
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HIDDEN
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Binds the action buttons and bottom sheet to [PreviewActionsViewModel] */
@@ -50,7 +49,6 @@ object PreviewActionsBinder {
         previewViewModel: WallpaperPreviewViewModel,
         actionsViewModel: PreviewActionsViewModel,
         deviceDisplayType: DeviceDisplayType,
-        displaySize: Point,
         lifecycleOwner: LifecycleOwner,
         logger: UserEventLogger,
         onStartEditActivity: (intent: Intent) -> Unit,
@@ -166,9 +164,8 @@ object PreviewActionsBinder {
                                 {
                                     // We need to set default wallpaper preview config view model
                                     // before entering full screen with edit activity overlay.
-                                    previewViewModel.setDefaultWallpaperPreviewConfigViewModel(
-                                        deviceDisplayType,
-                                        displaySize,
+                                    previewViewModel.setDefaultFullPreviewConfigViewModel(
+                                        deviceDisplayType
                                     )
                                     onStartEditActivity.invoke(it)
                                 }
@@ -233,16 +230,19 @@ object PreviewActionsBinder {
 
                 /** Floating sheet behavior */
                 launch {
-                    combine(
-                            actionsViewModel.informationFloatingSheetViewModel,
-                            actionsViewModel.effectFloatingSheetViewModel
-                        ) { informationViewModel, effectViewModel ->
-                            informationViewModel to effectViewModel
-                        }
-                        .collect { (informationViewModel, effectViewModel) ->
+                    actionsViewModel.previewFloatingSheetViewModel.collect { floatingSheetViewModel
+                        ->
+                        if (floatingSheetViewModel != null) {
+                            val (
+                                informationViewModel,
+                                imageEffectViewModel,
+                                creativeEffectViewModel,
+                                customizeViewModel,
+                            ) = floatingSheetViewModel
                             when {
                                 informationViewModel != null -> {
-                                    val onExploreButtonClicked =
+                                    floatingSheet.setInformationContent(
+                                        informationViewModel.attributions,
                                         informationViewModel.exploreActionUrl?.let { url ->
                                             {
                                                 logger.logWallpaperExploreButtonClicked()
@@ -250,31 +250,47 @@ object PreviewActionsBinder {
                                                     Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                                 )
                                             }
-                                        }
-                                    floatingSheet.setInformationContent(
-                                        informationViewModel.attributions,
-                                        onExploreButtonClicked
+                                        },
                                     )
-                                    floatingSheet.expand()
                                 }
-                                effectViewModel != null -> {
-                                    floatingSheet.setEffectContent(
-                                        effectViewModel.effectType,
-                                        effectViewModel.myPhotosClickListener,
-                                        effectViewModel.collapseFloatingSheetListener,
-                                        effectViewModel.effectSwitchListener,
-                                        effectViewModel.effectDownloadClickListener,
-                                        effectViewModel.status,
-                                        effectViewModel.resultCode,
-                                        effectViewModel.errorMessage,
-                                        effectViewModel.title,
-                                        effectViewModel.effectTextRes,
+                                imageEffectViewModel != null ->
+                                    floatingSheet.setImageEffectContent(
+                                        imageEffectViewModel.effectType,
+                                        imageEffectViewModel.myPhotosClickListener,
+                                        imageEffectViewModel.collapseFloatingSheetListener,
+                                        imageEffectViewModel.effectSwitchListener,
+                                        imageEffectViewModel.effectDownloadClickListener,
+                                        imageEffectViewModel.status,
+                                        imageEffectViewModel.resultCode,
+                                        imageEffectViewModel.errorMessage,
+                                        imageEffectViewModel.title,
+                                        imageEffectViewModel.effectTextRes,
                                     )
-                                    floatingSheet.expand()
-                                }
-                                else -> floatingSheet.collapse()
+                                creativeEffectViewModel != null ->
+                                    floatingSheet.setCreativeEffectContent(
+                                        creativeEffectViewModel.title,
+                                        creativeEffectViewModel.subtitle,
+                                        creativeEffectViewModel.wallpaperActions,
+                                        object :
+                                            WallpaperActionsToggleAdapter.WallpaperEffectSwitchListener {
+                                            override fun onEffectSwitchChanged(checkedItem: Int) {
+                                                launch {
+                                                    creativeEffectViewModel
+                                                        .wallpaperEffectSwitchListener(checkedItem)
+                                                }
+                                            }
+                                        },
+                                    )
+                                customizeViewModel != null ->
+                                    floatingSheet.setCustomizeContent(
+                                        customizeViewModel.customizeSliceUri
+                                    )
                             }
+                            floatingSheet.expand()
+                        } else {
+                            floatingSheet.collapse()
                         }
+                    }
                 }
             }
         }

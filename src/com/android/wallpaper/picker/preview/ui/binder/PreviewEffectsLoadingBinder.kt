@@ -24,7 +24,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.android.systemui.monet.ColorScheme
 import com.android.wallpaper.picker.customization.animation.view.LoadingAnimation
-import com.android.wallpaper.picker.preview.data.repository.EffectsRepository
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository.EffectStatus.EFFECT_APPLIED
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository.EffectStatus.EFFECT_DOWNLOAD_FAILED
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository.EffectStatus.EFFECT_READY
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 import com.android.wallpaper.util.ResourceUtils
 import kotlinx.coroutines.launch
@@ -45,11 +48,12 @@ object PreviewEffectsLoadingBinder {
                 viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                     loadingAnimation = getLoadingAnimation(view)
                     viewModel.effectStatus.collect { status ->
-                        if (status == EffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS) {
+                        if (status == EFFECT_APPLY_IN_PROGRESS) {
                             loadingAnimation?.playLoadingAnimation(seed = null)
                         } else if (
-                            status == EffectsRepository.EffectStatus.EFFECT_APPLIED ||
-                                status == EffectsRepository.EffectStatus.EFFECT_READY
+                            status == EFFECT_APPLIED ||
+                                status == EFFECT_READY ||
+                                status == EFFECT_DOWNLOAD_FAILED
                         ) {
                             // Play reveal animation whether applying the effect succeeded or
                             // failed.
