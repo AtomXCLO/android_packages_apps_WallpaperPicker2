@@ -60,8 +60,7 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
             WallpaperInfoCallback callback) {
 
         BaseFlags flags = InjectorProvider.getInjector().getFlags();
-        final boolean isMultiCropEnabled =
-                flags.isMultiCropEnabled() && flags.isMultiCropPreviewUiEnabled();
+        final boolean isMultiCropEnabled = flags.isMultiCropEnabled();
 
         boolean isHomeWallpaperSynced  = homeWallpaperSynced(context);
         boolean isLockWallpaperSynced  = lockWallpaperSynced(context);
@@ -74,7 +73,8 @@ public class DefaultCurrentWallpaperInfoFactory implements CurrentWallpaperInfoF
                 DisplayUtils displayUtils = InjectorProvider.getInjector().getDisplayUtils(context);
                 WallpaperClient wallpaperClient = InjectorProvider.getInjector().getWallpaperClient(
                         context);
-                List<Point> displaySizes = displayUtils.getInternalDisplaySizes();
+                List<Point> displaySizes = displayUtils
+                        .getInternalDisplaySizes(/* allDimensions= */ true);
                 if (mHomeWallpaper != null) {
                     boolean isHomeWallpaperStatic = mHomeWallpaper.getWallpaperComponent() == null
                             || mHomeWallpaper.getWallpaperComponent().getComponent() == null;
