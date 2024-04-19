@@ -18,6 +18,7 @@ package com.android.wallpaper.picker.preview.ui.binder
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Point
+import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
@@ -35,6 +36,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import androidx.transition.doOnEnd
 import com.android.wallpaper.R
+import com.android.wallpaper.model.wallpaper.DeviceDisplayType
 import com.android.wallpaper.picker.TouchForwardingLayout
 import com.android.wallpaper.picker.data.WallpaperModel
 import com.android.wallpaper.picker.preview.shared.model.CropSizeModel
@@ -66,6 +68,7 @@ object FullWallpaperPreviewBinder {
         transition: Transition?,
         displayUtils: DisplayUtils,
         lifecycleOwner: LifecycleOwner,
+        savedInstanceState: Bundle?,
         onWallpaperLoaded: ((Boolean) -> Unit)? = null,
     ) {
         val wallpaperPreviewCrop: FullPreviewFrameLayout =
@@ -90,7 +93,7 @@ object FullWallpaperPreviewBinder {
                         onWallpaperLoaded?.invoke(isWallpaperFullScreen)
                     }
                     val isPreviewingFullScreen = displaySize == currentSize
-                    if (transition == null) {
+                    if (transition == null || savedInstanceState != null) {
                         setFinalPreviewCardRadiusAndEndLoading(isPreviewingFullScreen)
                     } else {
                         transitionDisposableHandle?.dispose()
@@ -109,6 +112,20 @@ object FullWallpaperPreviewBinder {
         val surfaceView: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val surfaceTouchForwardingLayout: TouchForwardingLayout =
             view.requireViewById(R.id.touch_forwarding_layout)
+
+        val displayId = view.context.display.displayId
+        if (displayUtils.hasMultiInternalDisplays()) {
+            val currentDescription = surfaceTouchForwardingLayout.contentDescription?.toString()
+            val descriptionResourceId =
+                if (viewModel.getDisplayId(DeviceDisplayType.FOLDED) == displayId) {
+                    R.string.folded_device_state_description
+                } else {
+                    R.string.unfolded_device_state_description
+                }
+            val descriptionString =
+                surfaceTouchForwardingLayout.context.getString(descriptionResourceId)
+            surfaceTouchForwardingLayout.contentDescription = currentDescription + descriptionString
+        }
 
         var surfaceCallback: SurfaceViewUtil.SurfaceCallback? = null
         lifecycleOwner.lifecycleScope.launch {
