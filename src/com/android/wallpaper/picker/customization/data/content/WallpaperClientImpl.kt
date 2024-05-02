@@ -35,7 +35,7 @@ import android.graphics.Rect
 import android.net.Uri
 import android.os.Looper
 import android.util.Log
-import androidx.collection.ArrayMap
+import com.android.app.tracing.TraceUtils.traceAsync
 import com.android.wallpaper.asset.Asset
 import com.android.wallpaper.asset.BitmapUtils
 import com.android.wallpaper.asset.CurrentWallpaperAsset
@@ -144,39 +144,42 @@ class WallpaperClientImpl(
         fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     ) {
         if (destination == HOME || destination == BOTH) {
-            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
-            // home and lock screen wallpaper when lock screen is not set; otherwise daily rotation
-            // only rotates home screen while lock screen wallpaper stays as what it's set to.
+            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates
+            // both home and lock screen wallpaper when lock screen is not set; otherwise daily
+            // rotation only rotates home screen while lock screen wallpaper stays as what it's
+            // set to.
             stopWallpaperRotation()
         }
 
-        val cropHintsWithParallax =
-            fullPreviewCropModels?.let { cropModels ->
-                cropModels.mapValues { it.value.adjustCropForParallax(wallpaperSize) }
-            }
-                ?: emptyMap()
-        val managerId =
-            wallpaperManager.setStaticWallpaperToSystem(
-                asset.getStream(),
-                bitmap,
-                cropHintsWithParallax,
-                destination,
-                asset,
+        traceAsync(TAG, "setStaticWallpaper") {
+            val cropHintsWithParallax =
+                fullPreviewCropModels?.let { cropModels ->
+                    cropModels.mapValues { it.value.adjustCropForParallax(wallpaperSize) }
+                }
+                    ?: emptyMap()
+            val managerId =
+                wallpaperManager.setStaticWallpaperToSystem(
+                    asset.getStream(),
+                    bitmap,
+                    cropHintsWithParallax,
+                    destination,
+                    asset,
+                )
+
+            wallpaperPreferences.setStaticWallpaperMetadata(
+                metadata = wallpaperModel.getMetadata(bitmap, managerId),
+                destination = destination,
             )
 
-        wallpaperPreferences.setStaticWallpaperMetadata(
-            metadata = wallpaperModel.getMetadata(bitmap, managerId),
-            destination = destination,
-        )
-
-        // Save the static wallpaper to recent wallpapers
-        // TODO(b/309138446): check if we can update recent with all cropHints from WM later
-        wallpaperPreferences.addStaticWallpaperToRecentWallpapers(
-            destination,
-            wallpaperModel,
-            bitmap,
-            cropHintsWithParallax,
-        )
+            // Save the static wallpaper to recent wallpapers
+            // TODO(b/309138446): check if we can update recent with all cropHints from WM later
+            wallpaperPreferences.addStaticWallpaperToRecentWallpapers(
+                destination,
+                wallpaperModel,
+                bitmap,
+                cropHintsWithParallax,
+            )
+        }
     }
 
     private fun stopWallpaperRotation() {
@@ -265,27 +268,33 @@ class WallpaperClientImpl(
         wallpaperModel: LiveWallpaperModel,
     ) {
         if (destination == HOME || destination == BOTH) {
-            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates both
-            // home and lock screen wallpaper when lock screen is not set; otherwise daily rotation
-            // only rotates home screen while lock screen wallpaper stays as what it's set to.
+            // Disable rotation wallpaper when setting to home screen. Daily rotation rotates
+            // both home and lock screen wallpaper when lock screen is not set; otherwise daily
+            // rotation only rotates home screen while lock screen wallpaper stays as what it's
+            // set to.
             stopWallpaperRotation()
         }
 
-        val updatedWallpaperModel =
-            wallpaperModel.creativeWallpaperData?.let {
-                saveCreativeWallpaperAtExternal(wallpaperModel, destination)
-            }
-                ?: wallpaperModel
+        traceAsync(TAG, "setLiveWallpaper") {
+            val updatedWallpaperModel =
+                wallpaperModel.creativeWallpaperData?.let {
+                    saveCreativeWallpaperAtExternal(wallpaperModel, destination)
+                }
+                    ?: wallpaperModel
 
-        val managerId =
-            wallpaperManager.setLiveWallpaperToSystem(updatedWallpaperModel, destination)
+            val managerId =
+                wallpaperManager.setLiveWallpaperToSystem(updatedWallpaperModel, destination)
 
-        wallpaperPreferences.setLiveWallpaperMetadata(
-            metadata = updatedWallpaperModel.getMetadata(managerId),
-            destination = destination,
-        )
+            wallpaperPreferences.setLiveWallpaperMetadata(
+                metadata = updatedWallpaperModel.getMetadata(managerId),
+                destination = destination,
+            )
 
-        wallpaperPreferences.addLiveWallpaperToRecentWallpapers(destination, updatedWallpaperModel)
+            wallpaperPreferences.addLiveWallpaperToRecentWallpapers(
+                destination,
+                updatedWallpaperModel
+            )
+        }
     }
 
     /**
@@ -424,11 +433,14 @@ class WallpaperClientImpl(
         updateValues.put(KEY_ID, wallpaperId)
         updateValues.put(KEY_SCREEN, destination.asString())
         updateValues.put(KEY_SET_WALLPAPER_ENTRY_POINT, setWallpaperEntryPoint)
-        val updatedRowCount = context.contentResolver.update(SET_WALLPAPER_URI, updateValues, null)
-        if (updatedRowCount == 0) {
-            Log.e(TAG, "Error setting wallpaper: $wallpaperId")
+        traceAsync(TAG, "setRecentWallpaper") {
+            val updatedRowCount =
+                context.contentResolver.update(SET_WALLPAPER_URI, updateValues, null)
+            if (updatedRowCount == 0) {
+                Log.e(TAG, "Error setting wallpaper: $wallpaperId")
+            }
+            onDone.invoke()
         }
-        onDone.invoke()
     }
 
     private suspend fun queryRecentWallpapers(
@@ -588,19 +600,13 @@ class WallpaperClientImpl(
         @SetWallpaperFlags which: Int
     ): Map<Point, Rect>? {
         val flags = InjectorProvider.getInjector().getFlags()
-        val isMultiCropEnabled = flags.isMultiCropPreviewUiEnabled() && flags.isMultiCropEnabled()
-        if (!isMultiCropEnabled) {
+        if (!flags.isMultiCropEnabled()) {
             return null
         }
         val cropHints: List<Rect>? =
             wallpaperManager.getBitmapCrops(displaySizes, which, /* originalBitmap= */ true)
-        val cropHintsMap: MutableMap<Point, Rect> = ArrayMap()
-        if (cropHints != null) {
-            for (i in cropHints.indices) {
-                cropHintsMap[displaySizes[i]] = cropHints[i]
-            }
-        }
-        return cropHintsMap
+
+        return cropHints?.indices?.associate { displaySizes[it] to cropHints[it] }
     }
 
     override suspend fun getWallpaperColors(
