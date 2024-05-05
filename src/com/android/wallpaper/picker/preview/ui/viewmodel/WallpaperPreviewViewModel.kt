@@ -30,6 +30,7 @@ import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.HomeScreenPreviewUtils
 import com.android.wallpaper.picker.di.modules.PreviewUtilsModule.LockScreenPreviewUtils
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
 import com.android.wallpaper.picker.preview.domain.interactor.PreviewActionsInteractor
 import com.android.wallpaper.picker.preview.domain.interactor.WallpaperPreviewInteractor
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
@@ -83,7 +84,7 @@ constructor(
     val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
 
     // Used to display loading indication on the preview.
-    val effectStatus = actionsInteractor.imageEffectsStatus
+    val imageEffectsModel = actionsInteractor.imageEffectsModel
 
     // This flag prevents launching the creative edit activity again when orientation change.
     // On orientation change, the fragment's onCreateView will be called again.
@@ -148,6 +149,12 @@ constructor(
         }
     }
 
+    private val _isWallpaperColorPreviewEnabled = MutableStateFlow(false)
+    val isWallpaperColorPreviewEnabled = _isWallpaperColorPreviewEnabled.asStateFlow()
+    fun setIsWallpaperColorPreviewEnabled(isWallpaperColorPreviewEnabled: Boolean) {
+        _isWallpaperColorPreviewEnabled.value = isWallpaperColorPreviewEnabled
+    }
+
     private val _wallpaperConnectionColors: MutableStateFlow<WallpaperColorsModel> =
         MutableStateFlow(WallpaperColorsModel.Loading as WallpaperColorsModel).apply {
             viewModelScope.launch {
@@ -164,7 +171,11 @@ constructor(
                 wallpaperConnectionColors
             }
     val wallpaperColorsModel: Flow<WallpaperColorsModel> =
-        merge(liveWallpaperColors, staticWallpaperPreviewViewModel.wallpaperColors)
+        merge(liveWallpaperColors, staticWallpaperPreviewViewModel.wallpaperColors).combine(
+            isWallpaperColorPreviewEnabled
+        ) { colors, isEnabled ->
+            if (isEnabled) colors else WallpaperColorsModel.Loaded(null)
+        }
 
     // This is only used for the full screen preview.
     private val _fullPreviewConfigViewModel: MutableStateFlow<FullPreviewConfigViewModel?> =
@@ -226,17 +237,26 @@ constructor(
 
     // Set wallpaper button and set wallpaper dialog
     val isSetWallpaperButtonVisible: Flow<Boolean> =
+        wallpaper.map { it != null && !it.isDownloadableWallpaper() }
+
+    val isSetWallpaperButtonEnabled: Flow<Boolean> =
         combine(
+            isSetWallpaperButtonVisible,
             wallpaper,
             staticWallpaperPreviewViewModel.fullResWallpaperViewModel,
-        ) { wallpaper, fullResWallpaperViewModel ->
-            wallpaper != null &&
-                !wallpaper.isDownloadableWallpaper() &&
-                !(wallpaper is StaticWallpaperModel && fullResWallpaperViewModel == null)
+            actionsInteractor.imageEffectsModel,
+        ) { isSetWallpaperButtonVisible, wallpaper, fullResWallpaperViewModel, imageEffectsModel ->
+            isSetWallpaperButtonVisible &&
+                !(wallpaper is StaticWallpaperModel && fullResWallpaperViewModel == null) &&
+                imageEffectsModel.status !=
+                    ImageEffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS
         }
+
     val onSetWallpaperButtonClicked: Flow<(() -> Unit)?> =
-        isSetWallpaperButtonVisible.map { visible ->
-            if (visible) {
+        combine(isSetWallpaperButtonVisible, isSetWallpaperButtonEnabled) {
+            isSetWallpaperButtonVisible,
+            isSetWallpaperButtonEnabled ->
+            if (isSetWallpaperButtonVisible && isSetWallpaperButtonEnabled) {
                 { _showSetWallpaperDialog.value = true }
             } else null
         }
@@ -359,6 +379,11 @@ constructor(
             }
         }
     }
+
+    val isSmallPreviewClickable =
+        actionsInteractor.imageEffectsModel.map {
+            it.status != ImageEffectsRepository.EffectStatus.EFFECT_APPLY_IN_PROGRESS
+        }
 
     fun onSmallPreviewClicked(
         screen: Screen,
