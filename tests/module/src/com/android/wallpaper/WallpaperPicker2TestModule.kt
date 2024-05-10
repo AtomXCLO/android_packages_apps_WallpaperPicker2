@@ -15,14 +15,16 @@
  */
 package com.android.wallpaper
 
-import com.android.wallpaper.module.AppModule
 import com.android.wallpaper.module.Injector
 import com.android.wallpaper.module.PartnerProvider
 import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
+import com.android.wallpaper.modules.WallpaperPicker2AppModule
 import com.android.wallpaper.picker.preview.data.util.DefaultLiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
+import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
+import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestPartnerProvider
 import com.android.wallpaper.testing.TestWallpaperPreferences
@@ -35,8 +37,11 @@ import dagger.hilt.testing.TestInstallIn
 import javax.inject.Singleton
 
 @Module
-@TestInstallIn(components = [SingletonComponent::class], replaces = [AppModule::class])
-abstract class TestModule {
+@TestInstallIn(
+    components = [SingletonComponent::class],
+    replaces = [WallpaperPicker2AppModule::class]
+)
+abstract class WallpaperPicker2TestModule {
     @Binds @Singleton abstract fun bindInjector(impl: TestInjector): Injector
 
     @Binds @Singleton abstract fun bindUserEventLogger(impl: TestUserEventLogger): UserEventLogger
@@ -60,4 +65,10 @@ abstract class TestModule {
     @Binds
     @Singleton
     abstract fun providePartnerProvider(impl: TestPartnerProvider): PartnerProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindEffectsWallpaperDialogUtil(
+        impl: DefaultImageEffectDialogUtil
+    ): ImageEffectDialogUtil
 }

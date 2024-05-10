@@ -76,7 +76,11 @@ constructor(
         return wallpaperModel
     }
 
-    fun startEffectsMLDownload(effect: Effect) {
+    fun startEffectsModelDownload(effect: Effect) {
         imageEffectsRepository.startEffectsModelDownload(effect)
+    }
+
+    fun interruptEffectsModelDownload(effect: Effect) {
+        imageEffectsRepository.interruptEffectsModelDownload(effect)
     }
 }

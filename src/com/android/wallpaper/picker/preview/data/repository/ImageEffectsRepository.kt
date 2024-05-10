@@ -134,27 +134,26 @@ constructor(
                                 )
                         }
                         EffectsController.RESULT_FOREGROUND_DOWNLOAD_SUCCEEDED -> {
+                            _imageEffectsModel.value =
+                                ImageEffectsModel(EffectStatus.EFFECT_READY, resultCode)
                             logger.logEffectForegroundDownload(
                                 getEffectNameForLogging(),
                                 StyleEnums.EFFECT_APPLIED_ON_SUCCESS,
                                 System.currentTimeMillis() - startDownloadTime,
                             )
-                            _imageEffectsModel.value =
-                                ImageEffectsModel(EffectStatus.EFFECT_READY, resultCode)
                         }
-                        EffectsController.RESULT_FOREGROUND_DOWNLOAD_FAILED,
-                        EffectsController.RESULT_ERROR_TRY_AGAIN_LATER -> {
-                            logger.logEffectForegroundDownload(
-                                getEffectNameForLogging(),
-                                StyleEnums.EFFECT_APPLIED_ON_FAILED,
-                                System.currentTimeMillis() - startDownloadTime,
-                            )
+                        EffectsController.RESULT_FOREGROUND_DOWNLOAD_FAILED -> {
                             _imageEffectsModel.value =
                                 ImageEffectsModel(
                                     EffectStatus.EFFECT_DOWNLOAD_FAILED,
                                     resultCode,
                                     errorMessage,
                                 )
+                            logger.logEffectForegroundDownload(
+                                getEffectNameForLogging(),
+                                StyleEnums.EFFECT_APPLIED_ON_FAILED,
+                                System.currentTimeMillis() - startDownloadTime,
+                            )
                         }
                         EffectsController.RESULT_SUCCESS,
                         EffectsController.RESULT_SUCCESS_WITH_GENERATION_ERROR -> {
@@ -164,6 +163,9 @@ constructor(
                                     resultCode,
                                     errorMessage,
                                 )
+                            bundle.getCinematicWallpaperModel(effect)?.let {
+                                onWallpaperUpdated.invoke(it)
+                            }
                             logger.logEffectApply(
                                 getEffectNameForLogging(),
                                 StyleEnums.EFFECT_APPLIED_ON_SUCCESS,
@@ -171,9 +173,6 @@ constructor(
                                     startGeneratingTime,
                                 /* resultCode= */ originalStatusCode,
                             )
-                            bundle.getCinematicWallpaperModel(effect)?.let {
-                                onWallpaperUpdated.invoke(it)
-                            }
                         }
                         EffectsController.RESULT_SUCCESS_REUSED -> {
                             _imageEffectsModel.value =
@@ -181,6 +180,21 @@ constructor(
                             bundle.getCinematicWallpaperModel(effect)?.let {
                                 onWallpaperUpdated.invoke(it)
                             }
+                        }
+                        EffectsController.RESULT_ERROR_TRY_AGAIN_LATER -> {
+                            _imageEffectsModel.value =
+                                ImageEffectsModel(
+                                    EffectStatus.EFFECT_APPLY_FAILED,
+                                    resultCode,
+                                    errorMessage,
+                                )
+                            logger.logEffectApply(
+                                getEffectNameForLogging(),
+                                StyleEnums.EFFECT_APPLIED_ON_FAILED,
+                                /* timeElapsedMillis= */ System.currentTimeMillis() -
+                                    startGeneratingTime,
+                                /* resultCode= */ originalStatusCode
+                            )
                         }
                         else -> {
                             _imageEffectsModel.value =
@@ -304,11 +318,6 @@ constructor(
     fun enableImageEffect(effect: EffectEnumInterface) {
         startGeneratingTime = System.currentTimeMillis()
         _imageEffectsModel.value = ImageEffectsModel(EffectStatus.EFFECT_APPLY_IN_PROGRESS)
-        // TODO: Maybe we should call reconnect wallpaper if we have created a LiveWallpaperModel
-        //       if (mLiveWallpaperInfo != null) {
-        //           mCinematicViewModel.reconnectWallpaper()
-        //           return
-        //       }
         val uri = staticWallpaperModel.imageWallpaperData?.uri ?: return
         effectsController.generateEffect(effect, uri)
         timeOutHandler.postDelayed(
@@ -343,7 +352,12 @@ constructor(
     }
 
     fun destroy() {
+        timeOutHandler.removeCallbacksAndMessages(null)
         effectsController.removeListener()
+        // We need to call interruptGenerate() and destroy() to make sure there is no cached effect
+        // wallpaper overriding the currently-selected effect wallpaper preview.
+        wallpaperEffect.value?.let { effectsController.interruptGenerate(it) }
+        effectsController.destroy()
         _wallpaperEffect.value = null
     }
 
@@ -366,14 +380,19 @@ constructor(
      * in the foreground off the main thread so it's safe to trigger it from the main thread.
      */
     fun startEffectsModelDownload(effect: Effect) {
-        effectsController.startForegroundDownload(effect)
         _imageEffectsModel.value = ImageEffectsModel(EffectStatus.EFFECT_DOWNLOAD_IN_PROGRESS)
+        effectsController.startForegroundDownload(effect)
         startDownloadTime = System.currentTimeMillis()
         logger.logEffectForegroundDownload(
             getEffectNameForLogging(),
             StyleEnums.EFFECT_APPLIED_STARTED,
             0,
         )
+    }
+
+    fun interruptEffectsModelDownload(effect: Effect) {
+        _imageEffectsModel.value = ImageEffectsModel(EffectStatus.EFFECT_DOWNLOAD_READY)
+        effectsController.interruptForegroundDownload(effect)
     }
 
     private fun getEffectNameForLogging(): String {
