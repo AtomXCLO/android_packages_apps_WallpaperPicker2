@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.module
+package com.android.wallpaper.modules
 
 import android.content.Context
+import com.android.wallpaper.module.DefaultPartnerProvider
+import com.android.wallpaper.module.DefaultWallpaperPreferences
+import com.android.wallpaper.module.Injector
+import com.android.wallpaper.module.PartnerProvider
+import com.android.wallpaper.module.WallpaperPicker2Injector
+import com.android.wallpaper.module.WallpaperPreferences
 import com.android.wallpaper.module.logging.NoOpUserEventLogger
 import com.android.wallpaper.module.logging.UserEventLogger
 import com.android.wallpaper.picker.preview.data.util.DefaultLiveWallpaperDownloader
 import com.android.wallpaper.picker.preview.data.util.LiveWallpaperDownloader
+import com.android.wallpaper.picker.preview.ui.util.DefaultImageEffectDialogUtil
+import com.android.wallpaper.picker.preview.ui.util.ImageEffectDialogUtil
 import com.android.wallpaper.util.converter.DefaultWallpaperModelFactory
 import com.android.wallpaper.util.converter.WallpaperModelFactory
 import dagger.Binds
@@ -32,7 +40,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class AppModule {
+abstract class WallpaperPicker2AppModule {
     @Binds @Singleton abstract fun bindInjector(impl: WallpaperPicker2Injector): Injector
 
     @Binds
@@ -50,6 +58,12 @@ abstract class AppModule {
     @Binds
     @Singleton
     abstract fun bindPartnerProvider(impl: DefaultPartnerProvider): PartnerProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindEffectsWallpaperDialogUtil(
+        impl: DefaultImageEffectDialogUtil
+    ): ImageEffectDialogUtil
 
     companion object {
         @Provides
