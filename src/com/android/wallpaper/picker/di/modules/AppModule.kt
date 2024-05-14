@@ -19,6 +19,11 @@ package com.android.wallpaper.picker.di.modules
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.pm.PackageManager
+import com.android.wallpaper.system.UiModeManagerImpl
+import com.android.wallpaper.system.UiModeManagerWrapper
+import com.android.wallpaper.util.WallpaperXMLParser
+import com.android.wallpaper.util.WallpaperXMLParserInterface
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,16 +33,24 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-internal object AppModule {
-    @Provides
-    @Singleton
-    fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
-        return WallpaperManager.getInstance(appContext)
-    }
+abstract class AppModule {
+    @Binds @Singleton abstract fun bindUiModeManager(impl: UiModeManagerImpl): UiModeManagerWrapper
 
-    @Provides
+    @Binds
     @Singleton
-    fun providePackageManager(@ApplicationContext appContext: Context): PackageManager {
-        return appContext.packageManager
+    abstract fun bindWallpaperXMLParser(impl: WallpaperXMLParser): WallpaperXMLParserInterface
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideWallpaperManager(@ApplicationContext appContext: Context): WallpaperManager {
+            return WallpaperManager.getInstance(appContext)
+        }
+
+        @Provides
+        @Singleton
+        fun providePackageManager(@ApplicationContext appContext: Context): PackageManager {
+            return appContext.packageManager
+        }
     }
 }
