@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.util
+package com.android.wallpaper.picker.di.modules
 
-import android.content.res.XmlResourceParser
-import com.android.wallpaper.model.Category
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
+import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepositoryImpl
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.android.components.ActivityRetainedComponent
 
-interface WallpaperXMLParserInterface {
-    fun parseSystemCategories(parser: XmlResourceParser): List<Category>
+@Module
+@InstallIn(ActivityRetainedComponent::class)
+abstract class SharedActivityRetainedModule {
+    @Binds
+    abstract fun bindImageEffectsRepository(
+        impl: ImageEffectsRepositoryImpl
+    ): ImageEffectsRepository
 }
