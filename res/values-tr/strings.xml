@@ -21,7 +21,7 @@
     <!-- no translation found for app_name (8773648973927541493) -->
     <skip />
     <string name="select_wallpaper_label" msgid="6989581259339646085">"Duvar kağıdı kategorileri"</string>
-    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Duvar kağıdını ayarla"</string>
+    <string name="set_wallpaper_button_text" msgid="5445978864530156290">"Duvar kağıdı olarak kullanın"</string>
     <string name="set_wallpaper_progress_message" msgid="7986528287618716715">"Duvar kağıdı ayarlanıyor…"</string>
     <string name="try_again" msgid="8278874823700921234">"Tekrar dene"</string>
     <string name="set_wallpaper_error_message" msgid="6819986999041085130">"Duvar kağıdı ayarlanamadı."</string>
@@ -96,6 +96,8 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"Yukarı git"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"Düzenle"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"İndir"</string>
+    <!-- no translation found for download_effects (2772742927165716701) -->
+    <skip />
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"Duvar Kağıdı Slayt Gösterisi"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"Uygula"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"Sayfa <xliff:g id="ID_1">%1$d</xliff:g>/<xliff:g id="ID_2">%2$d</xliff:g>"</string>
@@ -107,7 +109,7 @@
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"Ana ekran duvar kağıdı önizlemesi"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"Koleksiyon mevcut değil"</string>
     <string name="wallpaper_exit_split_screen" msgid="1928870664619591636">"Lütfen bölünmüş ekran modundan çıkıp tekrar deneyin"</string>
-    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Ayarla"</string>
+    <string name="set_wallpaper_dialog_set_button" msgid="5760149969510325088">"Seç"</string>
     <string name="cancel" msgid="4970902691067201584">"İptal"</string>
     <string name="hide_ui_preview_text" msgid="6766076482511252295">"Arayüz Önizlemesini Gizle"</string>
     <string name="hint_hide_ui_preview" msgid="4527603797714586070">"Kullanıcı arayüzü önizlemesi gizlenmiş. Göstermek için iki kez dokunun"</string>

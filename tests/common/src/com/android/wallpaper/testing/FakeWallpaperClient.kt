@@ -29,12 +29,21 @@ import com.android.wallpaper.picker.customization.shared.model.WallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.LiveWallpaperModel
 import com.android.wallpaper.picker.data.WallpaperModel.StaticWallpaperModel
 import com.android.wallpaper.picker.preview.shared.model.FullPreviewCropModel
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.min
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 
-class FakeWallpaperClient : WallpaperClient {
+@Singleton
+class FakeWallpaperClient @Inject constructor() : WallpaperClient {
+    val wallpapersSet =
+        mutableMapOf(
+            WallpaperDestination.HOME to
+                mutableListOf<com.android.wallpaper.picker.data.WallpaperModel>(),
+            WallpaperDestination.LOCK to mutableListOf()
+        )
 
     private val _recentWallpapers =
         MutableStateFlow(
@@ -94,7 +103,7 @@ class FakeWallpaperClient : WallpaperClient {
         asset: Asset,
         fullPreviewCropModels: Map<Point, FullPreviewCropModel>?,
     ) {
-        TODO("Not yet implemented")
+        addToWallpapersSet(wallpaperModel, destination)
     }
 
     override suspend fun setLiveWallpaper(
@@ -102,7 +111,18 @@ class FakeWallpaperClient : WallpaperClient {
         destination: WallpaperDestination,
         wallpaperModel: LiveWallpaperModel,
     ) {
-        TODO("Not yet implemented")
+        addToWallpapersSet(wallpaperModel, destination)
+    }
+
+    private fun addToWallpapersSet(
+        wallpaperModel: com.android.wallpaper.picker.data.WallpaperModel,
+        destination: WallpaperDestination
+    ) {
+        wallpapersSet.forEach { entry ->
+            if (destination == entry.key || destination == WallpaperDestination.BOTH) {
+                entry.value.add(wallpaperModel)
+            }
+        }
     }
 
     override suspend fun setRecentWallpaper(

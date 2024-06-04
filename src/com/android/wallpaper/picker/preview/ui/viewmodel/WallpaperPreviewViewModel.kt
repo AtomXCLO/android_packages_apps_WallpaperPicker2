@@ -78,8 +78,14 @@ constructor(
 
     val staticWallpaperPreviewViewModel =
         staticWallpaperPreviewViewModelFactory.create(viewModelScope)
-    var isViewAsHome = false
+
     var isNewTask = false
+
+    // The source of current wallpaper preview, from HS or LS wallpaper.
+    var isViewAsHome = false
+
+    fun getWallpaperPreviewSource(): Screen =
+        if (isViewAsHome) Screen.HOME_SCREEN else Screen.LOCK_SCREEN
 
     val wallpaper: StateFlow<WallpaperModel?> = interactor.wallpaperModel
 
@@ -223,11 +229,16 @@ constructor(
         }
 
     val onCropButtonClick: Flow<(() -> Unit)?> =
-        combine(wallpaper, fullPreviewConfigViewModel.filterNotNull()) { wallpaper, _ ->
+        combine(wallpaper, fullPreviewConfigViewModel.filterNotNull(), fullWallpaper) {
+            wallpaper,
+            _,
+            fullWallpaper ->
             if (wallpaper is StaticWallpaperModel && !wallpaper.isDownloadableWallpaper()) {
                 {
                     staticWallpaperPreviewViewModel.run {
-                        updateCropHintsInfo(fullPreviewCropModels)
+                        updateCropHintsInfo(
+                            fullPreviewCropModels.filterKeys { it == fullWallpaper.displaySize }
+                        )
                     }
                 }
             } else {
@@ -401,6 +412,10 @@ constructor(
                 Screen.HOME_SCREEN,
                 deviceDisplayType,
             )
+    }
+
+    fun resetFullPreviewConfigViewModel() {
+        _fullPreviewConfigViewModel.value = null
     }
 
     companion object {

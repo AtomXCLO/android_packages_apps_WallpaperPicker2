@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-package com.android.wallpaper.util
+package com.android.wallpaper.picker.di.modules
 
-import android.content.res.XmlResourceParser
-import com.android.wallpaper.model.WallpaperCategory
+import com.android.wallpaper.util.DisplaysProvider
+import com.android.wallpaper.util.DisplaysProviderImpl
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
-interface WallpaperXMLParserInterface {
-    fun parseCategory(parser: XmlResourceParser): WallpaperCategory?
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DisplaysProviderModule {
+    @Binds
+    @Singleton
+    abstract fun bindDisplaysProvider(impl: DisplaysProviderImpl): DisplaysProvider
 }
