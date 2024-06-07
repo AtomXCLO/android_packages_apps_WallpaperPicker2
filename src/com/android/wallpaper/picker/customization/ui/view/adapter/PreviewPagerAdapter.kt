@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters
+package com.android.wallpaper.picker.customization.ui.view.adapter
 
 import android.view.LayoutInflater
 import android.view.View
@@ -22,15 +22,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.wallpaper.R
 
 /** This adapter provides preview views for the small preview fragment */
-class SinglePreviewPagerAdapter(
+class PreviewPagerAdapter(
     private val onBindViewHolder: (ViewHolder, Int) -> Unit,
-) : RecyclerView.Adapter<SinglePreviewPagerAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<PreviewPagerAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view =
-            LayoutInflater.from(parent.context)
-                .inflate(R.layout.small_preview_handheld_card_view, parent, false)
-
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.preview_card, parent, false)
+        // TODO (b/343286927): Add content description for a11y
         view.setPadding(
             0,
             parent.resources.getDimension(R.dimen.small_preview_preview_top_padding).toInt(),

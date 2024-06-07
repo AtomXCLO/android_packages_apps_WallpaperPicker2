@@ -16,13 +16,13 @@
 
 package com.android.wallpaper.picker.customization.data.repository
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.service.wallpaper.WallpaperService
-import androidx.test.core.app.ApplicationProvider
 import com.android.wallpaper.effects.Effect
 import com.android.wallpaper.effects.EffectsController
 import com.android.wallpaper.effects.EffectsController.RESULT_PROBE_SUCCESS
@@ -32,20 +32,20 @@ import com.android.wallpaper.effects.FakeEffectsController.Companion.LIVE_WALLPA
 import com.android.wallpaper.module.logging.TestUserEventLogger
 import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.ImageEffectsRepositoryImpl
-import com.android.wallpaper.picker.preview.data.util.ShadowWallpaperInfo
 import com.android.wallpaper.picker.preview.shared.model.ImageEffectsModel
 import com.android.wallpaper.testing.FakeContentProvider
 import com.android.wallpaper.testing.FakeContentProvider.Companion.FAKE_EFFECT_ID
 import com.android.wallpaper.testing.FakeContentProvider.Companion.FAKE_EFFECT_TITLE
+import com.android.wallpaper.testing.ShadowWallpaperInfo
 import com.android.wallpaper.testing.WallpaperModelUtils.Companion.getStaticWallpaperModel
 import com.android.wallpaper.testing.collectLastValue
 import com.android.wallpaper.widget.floatingsheetcontent.WallpaperEffectsView2
 import com.google.common.truth.Truth.assertThat
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import dagger.hilt.android.testing.HiltTestApplication
 import javax.inject.Inject
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -65,10 +65,10 @@ class ImageEffectsRepositoryImplTest {
 
     @Inject lateinit var contentProvider: FakeContentProvider
     @Inject lateinit var effectsController: FakeEffectsController
+    @Inject @ApplicationContext lateinit var context: Context
+    @Inject lateinit var testDispatcher: TestDispatcher
+    @Inject lateinit var testScope: TestScope
 
-    private val context: HiltTestApplication = ApplicationProvider.getApplicationContext()
-    private val testDispatcher = StandardTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
     private val staticWallpaperModel =
         getStaticWallpaperModel(
             wallpaperId = "testWallpaperId",
