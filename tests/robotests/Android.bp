@@ -9,6 +9,7 @@ android_app {
     platform_apis: true,
     static_libs: [
         "WallpaperPicker2ApplicationLib",
+        "WallpaperPicker2RoboLib",
         "WallpaperPicker2TestLib",
         "WallpaperPicker2TestModule",
     ],
@@ -40,4 +41,6 @@ android_robolectric_test {
     upstream: true,
 
     instrumentation_for: "WallpaperPicker2Shell",
+
+    strict_mode: false,
 }

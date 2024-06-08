@@ -18,12 +18,11 @@ package com.android.wallpaper.picker.preview.domain.interactor
 
 import android.content.Context
 import com.android.wallpaper.module.InjectorProvider
-import com.android.wallpaper.picker.di.modules.MainDispatcher
 import com.android.wallpaper.picker.preview.data.repository.CreativeEffectsRepository
 import com.android.wallpaper.picker.preview.data.repository.WallpaperPreviewRepository
 import com.android.wallpaper.picker.preview.data.util.FakeLiveWallpaperDownloader
-import com.android.wallpaper.picker.preview.data.util.ShadowWallpaperInfo
 import com.android.wallpaper.testing.FakeImageEffectsRepository
+import com.android.wallpaper.testing.ShadowWallpaperInfo
 import com.android.wallpaper.testing.TestInjector
 import com.android.wallpaper.testing.TestWallpaperPreferences
 import com.android.wallpaper.testing.collectLastValue
@@ -32,10 +31,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -57,7 +56,7 @@ class PreviewActionsInteractorTest {
     private lateinit var wallpaperPreviewRepository: WallpaperPreviewRepository
     private lateinit var creativeEffectsRepository: CreativeEffectsRepository
 
-    @Inject @MainDispatcher lateinit var testDispatcher: CoroutineDispatcher
+    @Inject lateinit var testDispatcher: TestDispatcher
     @Inject @ApplicationContext lateinit var appContext: Context
     @Inject lateinit var testInjector: TestInjector
     @Inject lateinit var liveWallpaperDownloader: FakeLiveWallpaperDownloader

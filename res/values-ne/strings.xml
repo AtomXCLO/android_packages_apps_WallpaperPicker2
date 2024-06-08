@@ -67,6 +67,7 @@
     <string name="refresh_daily_wallpaper_home_content_description" msgid="2770445044556164259">"गृहपृष्ठको दैनिक वालपेपर पुनः ताजा गर्नुहोस्"</string>
     <string name="refresh_daily_wallpaper_content_description" msgid="4362142658237147583">"दैनिक वालपेपर पुनः ताजा गर्नुहोस्"</string>
     <string name="preview_screen_description" msgid="3386387053327775919">"वालपेपरको प्रिभ्यू स्क्रिन"</string>
+    <string name="preview_screen_description_editable" msgid="506875963019888699">"वालपेपरको प्रिभ्यू देखाउने स्क्रिन %1$s। प्यान तथा जुम गर्न दुई वटा औँला प्रयोग गर्नुहोस्।"</string>
     <string name="folded_device_state_description" msgid="4972608448265616264">"फोल्ड गरिएको"</string>
     <string name="unfolded_device_state_description" msgid="3071975681472460627">"अनफोल्ड गरिएको"</string>
     <string name="full_preview_check_button_description" msgid="700484353763952975">"वालपेपर सम्पादन गर्ने कार्य पूरा भयो"</string>
@@ -85,7 +86,7 @@
     <string name="stretch_wallpaper_position" msgid="5002680983147456935">"तन्काइएको"</string>
     <string name="preview" msgid="1774602101743861071">"प्रिभ्यु"</string>
     <string name="tab_info" msgid="818614080690111416">"जानकारी"</string>
-    <string name="tab_customize" msgid="2533745409174959960">"आफू अनुकूल पार्नुहोस्"</string>
+    <string name="tab_customize" msgid="2533745409174959960">" कस्टम पार्नुहोस्"</string>
     <string name="tab_effects" msgid="3213606157589233901">"इफेक्टहरू"</string>
     <string name="tab_share" msgid="6676269624804601227">"सेयर गर्नुहोस्"</string>
     <string name="my_photos" msgid="8613021349284084982">"मेरा फोटोहरू"</string>
@@ -96,8 +97,7 @@
     <string name="bottom_action_bar_back" msgid="2620581414970740784">"माथि जानुहोस्"</string>
     <string name="bottom_action_bar_edit" msgid="1214742990893082138">"सम्पादन गर्नुहोस्"</string>
     <string name="bottom_action_bar_download" msgid="3983122338076389421">"डाउनलोड गर्नुहोस्"</string>
-    <!-- no translation found for download_effects (2772742927165716701) -->
-    <skip />
+    <string name="download_effects" msgid="2772742927165716701">"इफेक्टहरू डाउनलोड गर्नुहोस्"</string>
     <string name="bottom_action_bar_slideshow_wallpaper" msgid="509770525179533154">"स्लाइड सो वालपेपर"</string>
     <string name="bottom_action_bar_apply" msgid="2983308349819178932">"लागू गर्नुहोस्"</string>
     <string name="accessibility_preview_pager" msgid="1839869637405028575">"<xliff:g id="ID_2">%2$d</xliff:g> मध्ये पृष्ठ <xliff:g id="ID_1">%1$d</xliff:g>"</string>
@@ -105,6 +105,7 @@
     <string name="previous_page_content_description" msgid="1138597031571078429">"अघिल्लो"</string>
     <string name="wallpaper_title" msgid="6754214682228331092">"वालपेपर"</string>
     <string name="wallpaper_preview_card_content_description" msgid="6049261033541034584">"वालपेपरको प्रिभ्यु"</string>
+    <string name="wallpaper_preview_card_content_description_editable" msgid="3111763100515242340">"वालपेपरको प्रिभ्यू %1$s, फोटो सम्पादन गर्न ट्याप गर्नुहोस्"</string>
     <string name="lock_wallpaper_preview_card_content_description" msgid="5236839857695985498">"लकस्क्रिनमा देखिने वालपेपरको प्रिभ्यू"</string>
     <string name="home_wallpaper_preview_card_content_description" msgid="4059418716070821630">"होम स्क्रिनमा देखिने वालपेपरको प्रिभ्यू"</string>
     <string name="collection_not_exist_msg" msgid="3504852962885064842">"यो सङ्ग्रह छैन"</string>

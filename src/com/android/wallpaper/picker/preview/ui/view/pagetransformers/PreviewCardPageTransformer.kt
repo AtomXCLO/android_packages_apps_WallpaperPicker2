@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.wallpaper.picker.preview.ui.fragment.smallpreview.pagetransformers
+package com.android.wallpaper.picker.preview.ui.view.pagetransformers
 
 import android.graphics.Point
 import android.view.View
 import androidx.viewpager2.widget.ViewPager2
 import com.android.wallpaper.R
+import com.android.wallpaper.util.RtlUtils
 import kotlin.math.abs
 
 /**
@@ -27,7 +28,6 @@ import kotlin.math.abs
  */
 class PreviewCardPageTransformer(private val screenSizePx: Point) : ViewPager2.PageTransformer {
     override fun transformPage(page: View, position: Float) {
-        // TODO: cache this call
         val cardPreview = page.requireViewById<View>(R.id.preview)
 
         val nextItemVisibleOffsetPx =
@@ -35,7 +35,12 @@ class PreviewCardPageTransformer(private val screenSizePx: Point) : ViewPager2.P
 
         // device width in pixels minus the page width will give margin
         val availableMargin = screenSizePx.x - cardPreview.width - nextItemVisibleOffsetPx
-        page.translationX = -availableMargin * position
+        page.translationX =
+            if (RtlUtils.isRtl(page.context)) {
+                availableMargin * position
+            } else {
+                -availableMargin * position
+            }
 
         page.alpha = 0.25f + (1 - abs(position))
     }
