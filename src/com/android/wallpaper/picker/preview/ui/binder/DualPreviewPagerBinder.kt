@@ -24,15 +24,16 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import androidx.transition.TransitionListenerAdapter
+import androidx.viewpager.widget.ViewPager
 import com.android.wallpaper.R
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
-import com.android.wallpaper.model.wallpaper.PreviewPagerPage
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.DualPreviewViewPager
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.adapters.DualPreviewPagerAdapter
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout
 import com.android.wallpaper.picker.preview.ui.view.DualDisplayAspectRatioLayout.Companion.getViewId
+import com.android.wallpaper.picker.preview.ui.view.DualPreviewViewPager
+import com.android.wallpaper.picker.preview.ui.view.adapters.DualPreviewPagerAdapter
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
+import com.android.wallpaper.util.RtlUtils
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.launch
 
@@ -50,6 +51,14 @@ object DualPreviewPagerBinder {
         isFirstBinding: Boolean,
         navigate: (View) -> Unit,
     ) {
+        // ViewPager & PagerAdapter do not support RTL. Enable RTL compatibility by converting all
+        // indices to LTR using this function.
+        val convertToLTR = { position: Int ->
+            if (RtlUtils.isRtl(dualPreviewView.context)) {
+                wallpaperPreviewViewModel.smallPreviewTabs.size - position - 1
+            } else position
+        }
+
         var transitionDisposableHandle: DisposableHandle? = null
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
@@ -81,10 +90,12 @@ object DualPreviewPagerBinder {
             transitionDisposableHandle?.dispose()
             transitionDisposableHandle = null
         }
+
         // implement adapter for the dual preview pager
         dualPreviewView.adapter = DualPreviewPagerAdapter { view, position ->
+            val positionLTR = convertToLTR(position)
             // Set tag to allow small to full preview transition to accurately identify view
-            view.tag = position
+            view.tag = positionLTR
 
             PreviewTooltipBinder.bindSmallPreviewTooltip(
                 tooltipStub = view.requireViewById(R.id.tooltip_stub),
@@ -112,7 +123,7 @@ object DualPreviewPagerBinder {
                         view = dualDisplayAspectRatioLayout.requireViewById(display.getViewId()),
                         viewModel = wallpaperPreviewViewModel,
                         viewLifecycleOwner = viewLifecycleOwner,
-                        screen = PreviewPagerPage.entries[position].screen,
+                        screen = wallpaperPreviewViewModel.smallPreviewTabs[positionLTR],
                         displaySize = it,
                         deviceDisplayType = display,
                         currentNavDestId = currentNavDestId,
@@ -125,6 +136,34 @@ object DualPreviewPagerBinder {
             }
 
             dualPreviewView.overScrollMode = OVER_SCROLL_NEVER
+        }
+
+        val onPageChangeListenerPreviews =
+            object : ViewPager.OnPageChangeListener {
+                override fun onPageSelected(position: Int) {
+                    val positionLTR = convertToLTR(position)
+                    wallpaperPreviewViewModel.setSmallPreviewSelectedTabIndex(positionLTR)
+                }
+
+                override fun onPageScrolled(
+                    position: Int,
+                    positionOffset: Float,
+                    positionOffsetPixels: Int
+                ) {}
+
+                override fun onPageScrollStateChanged(state: Int) {}
+            }
+        dualPreviewView.addOnPageChangeListener(onPageChangeListenerPreviews)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                wallpaperPreviewViewModel.smallPreviewSelectedTabIndex.collect { position ->
+                    val positionLTR = convertToLTR(position)
+                    if (dualPreviewView.currentItem != positionLTR) {
+                        dualPreviewView.setCurrentItem(positionLTR, /* smoothScroll= */ true)
+                    }
+                }
+            }
         }
     }
 }

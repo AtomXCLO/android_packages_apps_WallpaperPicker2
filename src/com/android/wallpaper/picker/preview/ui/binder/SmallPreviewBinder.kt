@@ -29,8 +29,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.transition.Transition
 import androidx.transition.TransitionListenerAdapter
 import com.android.wallpaper.R
+import com.android.wallpaper.model.Screen
 import com.android.wallpaper.model.wallpaper.DeviceDisplayType
-import com.android.wallpaper.module.CustomizationSections.Screen
 import com.android.wallpaper.picker.preview.ui.fragment.SmallPreviewFragment
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
@@ -55,23 +55,19 @@ object SmallPreviewBinder {
     ) {
 
         val previewCard: CardView = view.requireViewById(R.id.preview_card)
-        val descriptionString = previewCard.contentDescription
-
-        val updatedDescription =
+        val foldedStateDescription =
             when (deviceDisplayType) {
-                DeviceDisplayType.FOLDED -> {
-                    val foldedStateDescription =
-                        view.context.getString(R.string.folded_device_state_description)
-                    "$descriptionString $foldedStateDescription"
-                }
-                DeviceDisplayType.UNFOLDED -> {
-                    val unfoldedStateDescription =
-                        view.context.getString(R.string.unfolded_device_state_description)
-                    "$descriptionString $unfoldedStateDescription"
-                }
-                else -> descriptionString
+                DeviceDisplayType.FOLDED ->
+                    view.context.getString(R.string.folded_device_state_description)
+                DeviceDisplayType.UNFOLDED ->
+                    view.context.getString(R.string.unfolded_device_state_description)
+                else -> ""
             }
-        previewCard.contentDescription = updatedDescription
+        previewCard.contentDescription =
+            view.context.getString(
+                R.string.wallpaper_preview_card_content_description_editable,
+                foldedStateDescription
+            )
         val wallpaperSurface: SurfaceView = view.requireViewById(R.id.wallpaper_surface)
         val workspaceSurface: SurfaceView = view.requireViewById(R.id.workspace_surface)
         var transitionDisposableHandle: DisposableHandle? = null
@@ -141,6 +137,16 @@ object SmallPreviewBinder {
                                     super.onTransitionEnd(transition)
                                     wallpaperSurface.isVisible = true
                                     workspaceSurface.isVisible = true
+                                    wallpaperSurface.alpha = 0f
+                                    workspaceSurface.alpha = 0f
+
+                                    val mediumAnimTimeMs =
+                                        view.resources
+                                            .getInteger(android.R.integer.config_mediumAnimTime)
+                                            .toLong()
+                                    wallpaperSurface.startFadeInAnimation(mediumAnimTimeMs)
+                                    workspaceSurface.startFadeInAnimation(mediumAnimTimeMs)
+
                                     transition.removeListener(this)
                                     transitionDisposableHandle = null
                                 }
@@ -153,16 +159,17 @@ object SmallPreviewBinder {
                 }
 
                 if (R.id.smallPreviewFragment == currentNavDestId) {
-                    viewModel.isSmallPreviewClickable.collect {
-                        if (it) {
-                            view.setOnClickListener {
-                                viewModel.onSmallPreviewClicked(screen, deviceDisplayType)
-                                navigate?.invoke(previewCard)
-                            }
-                        } else {
-                            view.setOnClickListener(null)
+                    viewModel
+                        .onSmallPreviewClicked(screen, deviceDisplayType) {
+                            navigate?.invoke(previewCard)
                         }
-                    }
+                        .collect { onClick ->
+                            if (onClick != null) {
+                                view.setOnClickListener { onClick() }
+                            } else {
+                                view.setOnClickListener(null)
+                            }
+                        }
                 } else if (R.id.setWallpaperDialog == currentNavDestId) {
                     previewCard.radius =
                         previewCard.resources.getDimension(
@@ -194,5 +201,9 @@ object SmallPreviewBinder {
             deviceDisplayType = deviceDisplayType,
             isFirstBinding = isFirstBinding,
         )
+    }
+
+    private fun SurfaceView.startFadeInAnimation(duration: Long) {
+        animate().alpha(1f).setDuration(duration).start()
     }
 }

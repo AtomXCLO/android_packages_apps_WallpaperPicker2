@@ -21,7 +21,7 @@ import android.view.View
 import androidx.lifecycle.LifecycleOwner
 import androidx.transition.Transition
 import androidx.viewpager2.widget.ViewPager2
-import com.android.wallpaper.picker.preview.ui.fragment.smallpreview.views.PreviewTabs
+import com.android.wallpaper.picker.preview.ui.view.PreviewTabs
 import com.android.wallpaper.picker.preview.ui.viewmodel.FullPreviewConfigViewModel
 import com.android.wallpaper.picker.preview.ui.viewmodel.WallpaperPreviewViewModel
 
@@ -55,39 +55,6 @@ object PreviewSelectorBinder {
             navigate,
         )
 
-        previewsViewPager.currentItem = if (wallpaperPreviewViewModel.isViewAsHome) 1 else 0
-        tabs.setTab(
-            if (wallpaperPreviewViewModel.isViewAsHome) PreviewTabs.Companion.Tab.HOME_SCREEN
-            else PreviewTabs.Companion.Tab.LOCK_SCREEN
-        )
-        synchronizeTabsWithPreviewPager(tabs, previewsViewPager)
-    }
-
-    private fun synchronizeTabsWithPreviewPager(
-        tabs: PreviewTabs,
-        previewsViewPager: ViewPager2,
-    ) {
-        tabs.setOnTabSelected {
-            if (it == PreviewTabs.Companion.Tab.LOCK_SCREEN && previewsViewPager.currentItem != 0) {
-                previewsViewPager.setCurrentItem(0, true)
-            } else if (
-                it == PreviewTabs.Companion.Tab.HOME_SCREEN && previewsViewPager.currentItem != 1
-            ) {
-                previewsViewPager.setCurrentItem(1, true)
-            }
-        }
-
-        previewsViewPager.registerOnPageChangeCallback(
-            object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    super.onPageSelected(position)
-                    if (position == 0) {
-                        tabs.transitionToTab(PreviewTabs.Companion.Tab.LOCK_SCREEN)
-                    } else if (position == 1) {
-                        tabs.transitionToTab(PreviewTabs.Companion.Tab.HOME_SCREEN)
-                    }
-                }
-            }
-        )
+        TabsBinder.bind(tabs, wallpaperPreviewViewModel, viewLifecycleOwner)
     }
 }
